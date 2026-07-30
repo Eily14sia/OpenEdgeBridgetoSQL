@@ -1,0 +1,8 @@
+D:\do not delete\Documents\GitHub\OpenEdgeBridge\publish\OpenEdgeBridge.pdb
+D:\do not delete\Documents\GitHub\OpenEdgeBridge\publish\appsettings.json
+D:\do not delete\Documents\GitHub\OpenEdgeBridge\publish\comerr64.dll
+D:\do not delete\Documents\GitHub\OpenEdgeBridge\publish\gssapi64.dll
+D:\do not delete\Documents\GitHub\OpenEdgeBridge\publish\k5sprt64.dll
+D:\do not delete\Documents\GitHub\OpenEdgeBridge\publish\krb5_64.dll
+D:\do not delete\Documents\GitHub\OpenEdgeBridge\publish\krbcc64.dll
+D:\do not delete\Documents\GitHub\OpenEdgeBridge\publish\OpenEdgeBridge.exe
