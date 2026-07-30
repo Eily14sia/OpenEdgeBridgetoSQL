@@ -21,103 +21,83 @@ public class SyncService
         _logger = logger;
     }
 
-    public async Task SyncOpenEdgeToMySqlAsync()
+    public async Task SyncIdPrintsAsync()
     {
-        _logger.LogInformation("Starting OpenEdge → MySQL synchronization...");
+        _logger.LogInformation("Starting id-print sync: OpenEdge → MySQL...");
 
         int synced = 0;
         int failed = 0;
 
         try
         {
-            List<Cardholder> openEdgeCards = await RetryAsync(
-                () => _openEdgeRepo.GetCardholdersAsync(),
-                "Read from OpenEdge");
+            List<IdPrint> records = await RetryAsync(
+                () => _openEdgeRepo.GetIdPrintsAsync(),
+                "Read id-print from OpenEdge");
 
-            foreach (var card in openEdgeCards)
+            foreach (var record in records)
             {
                 try
                 {
                     await RetryAsync(
-                        () => _mySqlRepo.UpsertCardholderAsync(card),
-                        $"Upsert cardholder {card.EmployeeId}");
+                        () => _mySqlRepo.UpsertIdPrintAsync(record),
+                        $"Upsert id-print batch={record.BatchNo} app={record.AppNo}");
                     synced++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to upsert cardholder {EmployeeId}", card.EmployeeId);
+                    _logger.LogError(ex,
+                        "Failed to upsert id-print batch={BatchNo} app={AppNo}",
+                        record.BatchNo, record.AppNo);
                     failed++;
                 }
             }
 
             _logger.LogInformation(
-                "OpenEdge → MySQL sync complete. {Synced} records synchronized, {Failed} failed.",
-                synced, failed);
+                "id-print sync complete. {Synced} synced, {Failed} failed (out of {Total}).",
+                synced, failed, records.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OpenEdge → MySQL synchronization failed.");
+            _logger.LogError(ex, "id-print sync failed.");
         }
     }
 
-    public async Task SyncPrintCountBackToOpenEdgeAsync()
+    public async Task SyncPrintedBackToOpenEdgeAsync()
     {
-        _logger.LogInformation("Starting print count sync back to OpenEdge...");
+        _logger.LogInformation("Starting print_count back-sync: MySQL → OpenEdge...");
 
         int updated = 0;
         int failed = 0;
 
         try
         {
-            List<Cardholder> mySqlCards = await RetryAsync(
-                () => _mySqlRepo.GetPendingPrintsAsync(),
-                "Read from MySQL");
+            List<int> appNos = await RetryAsync(
+                () => _mySqlRepo.GetPrintedAppNosAsync(),
+                "Read printed app_nos from MySQL");
 
-            List<Cardholder> openEdgeCards = await RetryAsync(
-                () => _openEdgeRepo.GetCardholdersAsync(),
-                "Read from OpenEdge for print count comparison");
-
-            // Build lookup by EmployeeId for fast comparison
-            var openEdgeLookup = openEdgeCards
-                .Where(c => !string.IsNullOrEmpty(c.EmployeeId))
-                .ToDictionary(c => c.EmployeeId, c => c.PrintCount);
-
-            foreach (var mysqlCard in mySqlCards)
+            foreach (int appNo in appNos)
             {
-                if (string.IsNullOrEmpty(mysqlCard.EmployeeId))
-                    continue;
-
-                if (openEdgeLookup.TryGetValue(mysqlCard.EmployeeId, out int oePrintCount))
+                try
                 {
-                    // If MySQL has a higher print count, push it back to OpenEdge
-                    if (mysqlCard.PrintCount > oePrintCount)
-                    {
-                        try
-                        {
-                            int diff = mysqlCard.PrintCount - oePrintCount;
-                            for (int i = 0; i < diff; i++)
-                            {
-                                await RetryAsync(
-                                    () => _openEdgeRepo.UpdatePrintCountAsync(mysqlCard.Id),
-                                    $"Update print count for {mysqlCard.EmployeeId}");
-                            }
-                            updated++;
-                            _logger.LogInformation(
-                                "Synced print count for {EmployeeId}: OpenEdge {OE} → MySQL {MySQL}",
-                                mysqlCard.EmployeeId, oePrintCount, mysqlCard.PrintCount);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to update print count for {EmployeeId}", mysqlCard.EmployeeId);
-                            failed++;
-                        }
-                    }
+                    // Mark both sides as printed
+                    await RetryAsync(
+                        () => _openEdgeRepo.MarkPrintedAsync(appNo),
+                        $"Mark app-no={appNo} as printed in OpenEdge");
+                    await RetryAsync(
+                        () => _mySqlRepo.MarkPrintedAsync(appNo),
+                        $"Mark app-no={appNo} as printed in MySQL");
+                    updated++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to mark app-no={AppNo} as printed", appNo);
+                    failed++;
                 }
             }
 
             _logger.LogInformation(
-                "Print count sync complete. {Updated} records updated, {Failed} failed.",
-                updated, failed);
+                "Print count back-sync complete. {Updated} marked printed, {Failed} failed (out of {Total}).",
+                updated, failed, appNos.Count);
         }
         catch (Exception ex)
         {
@@ -143,7 +123,6 @@ public class SyncService
             }
         }
 
-        // Final attempt — let exception propagate
         return await operation();
     }
 
@@ -166,7 +145,6 @@ public class SyncService
             }
         }
 
-        // Final attempt — let exception propagate
         await operation();
     }
 }

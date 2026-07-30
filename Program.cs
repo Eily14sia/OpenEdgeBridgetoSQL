@@ -76,11 +76,11 @@ public class Program
         {
             while (!cts.Token.IsCancellationRequested)
             {
-                // Phase 3: OpenEdge → MySQL
-                await syncService.SyncOpenEdgeToMySqlAsync();
+                // Sync id-print: OpenEdge → MySQL
+                await syncService.SyncIdPrintsAsync();
 
-                // Phase 4: MySQL print_count → OpenEdge
-                await syncService.SyncPrintCountBackToOpenEdgeAsync();
+                // Back-sync: if Instant ID incremented print_count, mark printed in OpenEdge
+                await syncService.SyncPrintedBackToOpenEdgeAsync();
 
                 try
                 {

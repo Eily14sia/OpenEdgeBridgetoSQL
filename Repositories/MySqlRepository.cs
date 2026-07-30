@@ -17,147 +17,170 @@ public class MySqlRepository : IDisposable
         _logger = logger;
     }
 
-    public async Task UpsertCardholderAsync(Cardholder cardholder)
+    public async Task UpsertIdPrintAsync(IdPrint record)
     {
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        // Check if the record already exists by openedge_id before deciding
-        // whether to INSERT or UPDATE. This avoids duplicates even if the
-        // MySQL table lacks a UNIQUE constraint on openedge_id.
-        const string checkSql = "SELECT COUNT(1) FROM cardholders WHERE openedge_id = @id";
-        await using var checkCmd = new MySqlCommand(checkSql, connection);
-        checkCmd.Parameters.AddWithValue("@id", cardholder.Id);
-        long exists = Convert.ToInt64(await checkCmd.ExecuteScalarAsync());
-
-        if (exists > 0)
-        {
-            const string updateSql = """
-                UPDATE cardholders
-                SET
-                    employee_id = @employee,
-                    first_name  = @first,
-                    last_name   = @last,
-                    department  = @department,
-                    position    = @position,
-                    print_count = @count,
-                    synced_at   = NOW()
-                WHERE openedge_id = @id
-                """;
-
-            await using var updateCmd = new MySqlCommand(updateSql, connection);
-            updateCmd.Parameters.AddWithValue("@id", cardholder.Id);
-            updateCmd.Parameters.AddWithValue("@employee", cardholder.EmployeeId);
-            updateCmd.Parameters.AddWithValue("@first", cardholder.FirstName);
-            updateCmd.Parameters.AddWithValue("@last", cardholder.LastName);
-            updateCmd.Parameters.AddWithValue("@department", cardholder.Department);
-            updateCmd.Parameters.AddWithValue("@position", cardholder.Position);
-            updateCmd.Parameters.AddWithValue("@count", cardholder.PrintCount);
-
-            await updateCmd.ExecuteNonQueryAsync();
-            _logger.LogDebug("Updated existing cardholder {EmployeeId} (openedge_id={Id})", cardholder.EmployeeId, cardholder.Id);
-        }
-        else
-        {
-            const string insertSql = """
-                INSERT INTO cardholders
-                (
-                    openedge_id,
-                    employee_id,
-                    first_name,
-                    last_name,
-                    department,
-                    position,
-                    print_count,
-                    synced_at
-                )
-                VALUES
-                (
-                    @id,
-                    @employee,
-                    @first,
-                    @last,
-                    @department,
-                    @position,
-                    @count,
-                    NOW()
-                )
-                """;
-
-            await using var insertCmd = new MySqlCommand(insertSql, connection);
-            insertCmd.Parameters.AddWithValue("@id", cardholder.Id);
-            insertCmd.Parameters.AddWithValue("@employee", cardholder.EmployeeId);
-            insertCmd.Parameters.AddWithValue("@first", cardholder.FirstName);
-            insertCmd.Parameters.AddWithValue("@last", cardholder.LastName);
-            insertCmd.Parameters.AddWithValue("@department", cardholder.Department);
-            insertCmd.Parameters.AddWithValue("@position", cardholder.Position);
-            insertCmd.Parameters.AddWithValue("@count", cardholder.PrintCount);
-
-            await insertCmd.ExecuteNonQueryAsync();
-            _logger.LogDebug("Inserted new cardholder {EmployeeId} (openedge_id={Id})", cardholder.EmployeeId, cardholder.Id);
-        }
-    }
-
-    public async Task<List<Cardholder>> GetPendingPrintsAsync()
-    {
-        var pending = new List<Cardholder>();
-
-        await using var connection = new MySqlConnection(_connectionString);
-        await connection.OpenAsync();
-
-        // Returns all cardholders from MySQL.
-        // The SyncService will compare print_count values against OpenEdge
-        // to determine which records need their print count synced back.
+        // Use INSERT ... ON DUPLICATE KEY UPDATE keyed on app_no.
+        // If the same app_no already exists, all other columns are refreshed.
         const string sql = """
-            SELECT
-                openedge_id,
-                employee_id,
-                first_name,
-                last_name,
-                department,
-                position,
+            INSERT INTO id_print
+            (
+                batch_no,
+                batch_date,
+                app_no,
+                dob,
+                cp_no,
+                fullname,
+                hcp_fullname,
+                address,
+                hcp_cpno,
+                lname,
+                fname,
+                mname,
+                spa_docno,
+                page_no,
+                book_no,
+                series_no,
+                spa_atty,
+                spa_dt_issue,
+                printed,
+                printed_dt,
+                printed_tm,
+                id_type,
+                image_data,
+                id_code,
                 print_count
-            FROM cardholders
+            )
+            VALUES
+            (
+                @batch_no,
+                @batch_date,
+                @app_no,
+                @dob,
+                @cp_no,
+                @fullname,
+                @hcp_fullname,
+                @address,
+                @hcp_cpno,
+                @lname,
+                @fname,
+                @mname,
+                @spa_docno,
+                @page_no,
+                @book_no,
+                @series_no,
+                @spa_atty,
+                @spa_dt_issue,
+                @printed,
+                @printed_dt,
+                @printed_tm,
+                @id_type,
+                @image_data,
+                @id_code,
+                @print_count
+            )
+            ON DUPLICATE KEY UPDATE
+                batch_date    = VALUES(batch_date),
+                dob           = VALUES(dob),
+                cp_no         = VALUES(cp_no),
+                fullname      = VALUES(fullname),
+                hcp_fullname  = VALUES(hcp_fullname),
+                address       = VALUES(address),
+                hcp_cpno      = VALUES(hcp_cpno),
+                lname         = VALUES(lname),
+                fname         = VALUES(fname),
+                mname         = VALUES(mname),
+                spa_docno     = VALUES(spa_docno),
+                page_no       = VALUES(page_no),
+                book_no       = VALUES(book_no),
+                series_no     = VALUES(series_no),
+                spa_atty      = VALUES(spa_atty),
+                spa_dt_issue  = VALUES(spa_dt_issue),
+                printed       = VALUES(printed),
+                printed_dt    = VALUES(printed_dt),
+                printed_tm    = VALUES(printed_tm),
+                id_type       = VALUES(id_type),
+                image_data    = VALUES(image_data),
+                id_code       = VALUES(id_code)
             """;
 
-        await using var command = new MySqlCommand(sql, connection);
-        await using var reader = await command.ExecuteReaderAsync();
+        await using var cmd = new MySqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@batch_no",     (object?)record.BatchNo     ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@batch_date",   (object?)record.BatchDate   ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@app_no",       (object?)record.AppNo       ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@dob",          (object?)record.Dob         ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@cp_no",        (object?)record.CpNo        ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@fullname",     (object?)record.Fullname    ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@hcp_fullname", (object?)record.HcpFullname ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@address",      (object?)record.Address     ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@hcp_cpno",     (object?)record.HcpCpno     ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@lname",        (object?)record.Lname       ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@fname",        (object?)record.Fname       ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@mname",        (object?)record.Mname       ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@spa_docno",    (object?)record.SpaDocno    ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@page_no",      (object?)record.PageNo      ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@book_no",      (object?)record.BookNo      ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@series_no",    (object?)record.SeriesNo    ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@spa_atty",     (object?)record.SpaAtty     ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@spa_dt_issue", (object?)record.SpaDtIssue  ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@printed",      (object?)record.Printed     ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@printed_dt",   (object?)record.PrintedDt   ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@printed_tm",   (object?)record.PrintedTm   ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@id_type",      (object?)record.IdType      ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@image_data",   (object?)record.ImageData   ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@id_code",      (object?)record.IdCode      ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@print_count",  (object?)record.PrintCount  ?? DBNull.Value);
 
-        int ordId = reader.GetOrdinal("openedge_id");
-        int ordEmployeeId = reader.GetOrdinal("employee_id");
-        int ordFirstName = reader.GetOrdinal("first_name");
-        int ordLastName = reader.GetOrdinal("last_name");
-        int ordDepartment = reader.GetOrdinal("department");
-        int ordPosition = reader.GetOrdinal("position");
-        int ordPrintCount = reader.GetOrdinal("print_count");
+        await cmd.ExecuteNonQueryAsync();
+        _logger.LogDebug("Upserted id-print record batch_no={BatchNo} app_no={AppNo}", record.BatchNo, record.AppNo);
+    }
+
+    /// <summary>
+    /// Returns the app_no values of records that have been printed by Instant ID
+    /// (print_count > 0) but are not yet marked as printed.
+    /// </summary>
+    public async Task<List<int>> GetPrintedAppNosAsync()
+    {
+        var appNos = new List<int>();
+
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string sql = """
+            SELECT app_no
+            FROM id_print
+            WHERE print_count > 0
+              AND (printed IS NULL OR printed = 'no')
+            """;
+
+        await using var cmd = new MySqlCommand(sql, connection);
+        await using var reader = await cmd.ExecuteReaderAsync();
 
         while (await reader.ReadAsync())
         {
-            pending.Add(new Cardholder
-            {
-                Id = reader.GetInt32(ordId),
-                EmployeeId = reader.IsDBNull(ordEmployeeId)
-                    ? string.Empty
-                    : reader.GetString(ordEmployeeId),
-                FirstName = reader.IsDBNull(ordFirstName)
-                    ? string.Empty
-                    : reader.GetString(ordFirstName),
-                LastName = reader.IsDBNull(ordLastName)
-                    ? string.Empty
-                    : reader.GetString(ordLastName),
-                Department = reader.IsDBNull(ordDepartment)
-                    ? string.Empty
-                    : reader.GetString(ordDepartment),
-                Position = reader.IsDBNull(ordPosition)
-                    ? string.Empty
-                    : reader.GetString(ordPosition),
-                PrintCount = reader.IsDBNull(ordPrintCount)
-                    ? 0
-                    : reader.GetInt32(ordPrintCount)
-            });
+            if (!reader.IsDBNull(0))
+                appNos.Add(reader.GetInt32(0));
         }
 
-        return pending;
+        return appNos;
+    }
+
+    public async Task MarkPrintedAsync(int appNo)
+    {
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string sql = """
+            UPDATE id_print
+            SET printed = 'yes'
+            WHERE app_no = @app_no
+            """;
+
+        await using var cmd = new MySqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@app_no", appNo);
+        await cmd.ExecuteNonQueryAsync();
     }
 
     public void Dispose()

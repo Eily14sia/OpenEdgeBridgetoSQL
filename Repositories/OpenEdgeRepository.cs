@@ -1,4 +1,3 @@
-using System.Data;
 using System.Data.Odbc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -18,82 +17,125 @@ public class OpenEdgeRepository : IDisposable
         _logger = logger;
     }
 
-    public async Task<List<Cardholder>> GetCardholdersAsync()
+    public async Task<List<IdPrint>> GetIdPrintsAsync()
     {
-        var cardholders = new List<Cardholder>();
+        var idPrints = new List<IdPrint>();
 
         await using var connection = new OdbcConnection(_connectionString);
         await connection.OpenAsync();
 
         const string sql = """
             SELECT
-                ID,
-                EMPLOYEE_ID,
-                FIRST_NAME,
-                LAST_NAME,
-                DEPARTMENT,
-                POSITION,
-                PRINT_COUNT
-            FROM PUB.cardholder
+                "batch-no",
+                "batch-date",
+                "app-no",
+                "dob",
+                "cp-no",
+                "fullname",
+                "hcp-fullname",
+                "address",
+                "hcp-cpno",
+                "lname",
+                "fname",
+                "mname",
+                "spa-docno",
+                "page-no",
+                "book-no",
+                "series-no",
+                "spa-atty",
+                "spa-dt-issue",
+                "printed",
+                "printed-dt",
+                "printed-tm",
+                "id-type",
+                "image-data",
+                "id-code"
+            FROM "id-print"
             """;
 
         await using var command = new OdbcCommand(sql, connection);
         await using var reader = await command.ExecuteReaderAsync();
 
+        int oBatchNo     = reader.GetOrdinal("batch-no");
+        int oBatchDate   = reader.GetOrdinal("batch-date");
+        int oAppNo       = reader.GetOrdinal("app-no");
+        int oDob         = reader.GetOrdinal("dob");
+        int oCpNo        = reader.GetOrdinal("cp-no");
+        int oFullname    = reader.GetOrdinal("fullname");
+        int oHcpFullname = reader.GetOrdinal("hcp-fullname");
+        int oAddress     = reader.GetOrdinal("address");
+        int oHcpCpno     = reader.GetOrdinal("hcp-cpno");
+        int oLname       = reader.GetOrdinal("lname");
+        int oFname       = reader.GetOrdinal("fname");
+        int oMname       = reader.GetOrdinal("mname");
+        int oSpaDocno    = reader.GetOrdinal("spa-docno");
+        int oPageNo      = reader.GetOrdinal("page-no");
+        int oBookNo      = reader.GetOrdinal("book-no");
+        int oSeriesNo    = reader.GetOrdinal("series-no");
+        int oSpaAtty     = reader.GetOrdinal("spa-atty");
+        int oSpaDtIssue  = reader.GetOrdinal("spa-dt-issue");
+        int oPrinted     = reader.GetOrdinal("printed");
+        int oPrintedDt   = reader.GetOrdinal("printed-dt");
+        int oPrintedTm   = reader.GetOrdinal("printed-tm");
+        int oIdType      = reader.GetOrdinal("id-type");
+        int oImageData   = reader.GetOrdinal("image-data");
+        int oIdCode      = reader.GetOrdinal("id-code");
+
         while (await reader.ReadAsync())
         {
-            cardholders.Add(new Cardholder
+            idPrints.Add(new IdPrint
             {
-                Id = reader.GetInt32("ID"),
-                EmployeeId = reader.IsDBNull("EMPLOYEE_ID")
-                    ? string.Empty
-                    : reader.GetString("EMPLOYEE_ID"),
-                FirstName = reader.IsDBNull("FIRST_NAME")
-                    ? string.Empty
-                    : reader.GetString("FIRST_NAME"),
-                LastName = reader.IsDBNull("LAST_NAME")
-                    ? string.Empty
-                    : reader.GetString("LAST_NAME"),
-                Department = reader.IsDBNull("DEPARTMENT")
-                    ? string.Empty
-                    : reader.GetString("DEPARTMENT"),
-                Position = reader.IsDBNull("POSITION")
-                    ? string.Empty
-                    : reader.GetString("POSITION"),
-                PrintCount = reader.IsDBNull("PRINT_COUNT")
-                    ? 0
-                    : reader.GetInt32("PRINT_COUNT")
+                BatchNo     = reader.IsDBNull(oBatchNo)     ? null : reader.GetInt32(oBatchNo),
+                BatchDate   = reader.IsDBNull(oBatchDate)   ? null : reader.GetDateTime(oBatchDate),
+                AppNo       = reader.IsDBNull(oAppNo)       ? null : reader.GetInt32(oAppNo),
+                Dob         = reader.IsDBNull(oDob)         ? null : reader.GetDateTime(oDob),
+                CpNo        = reader.IsDBNull(oCpNo)        ? null : reader.GetString(oCpNo),
+                Fullname    = reader.IsDBNull(oFullname)    ? null : reader.GetString(oFullname),
+                HcpFullname = reader.IsDBNull(oHcpFullname) ? null : reader.GetString(oHcpFullname),
+                Address     = reader.IsDBNull(oAddress)     ? null : reader.GetString(oAddress),
+                HcpCpno     = reader.IsDBNull(oHcpCpno)     ? null : reader.GetString(oHcpCpno),
+                Lname       = reader.IsDBNull(oLname)       ? null : reader.GetString(oLname),
+                Fname       = reader.IsDBNull(oFname)       ? null : reader.GetString(oFname),
+                Mname       = reader.IsDBNull(oMname)       ? null : reader.GetString(oMname),
+                SpaDocno    = reader.IsDBNull(oSpaDocno)    ? null : reader.GetString(oSpaDocno),
+                PageNo      = reader.IsDBNull(oPageNo)      ? null : reader.GetString(oPageNo),
+                BookNo      = reader.IsDBNull(oBookNo)      ? null : reader.GetString(oBookNo),
+                SeriesNo    = reader.IsDBNull(oSeriesNo)    ? null : reader.GetString(oSeriesNo),
+                SpaAtty     = reader.IsDBNull(oSpaAtty)     ? null : reader.GetString(oSpaAtty),
+                SpaDtIssue  = reader.IsDBNull(oSpaDtIssue)  ? null : reader.GetDateTime(oSpaDtIssue),
+                Printed     = reader.IsDBNull(oPrinted)     ? null : (reader.GetBoolean(oPrinted) ? "yes" : "no"),
+                PrintedDt   = reader.IsDBNull(oPrintedDt)   ? null : reader.GetDateTime(oPrintedDt),
+                PrintedTm   = reader.IsDBNull(oPrintedTm)   ? null : reader.GetString(oPrintedTm),
+                IdType      = reader.IsDBNull(oIdType)      ? null : reader.GetInt32(oIdType),
+                ImageData   = reader.IsDBNull(oImageData)   ? null : (byte[])reader[oImageData],
+                IdCode      = reader.IsDBNull(oIdCode)      ? null : reader.GetInt32(oIdCode)
             });
         }
 
-        return cardholders;
+        return idPrints;
     }
 
-    public async Task UpdatePrintCountAsync(int id)
+    public async Task MarkPrintedAsync(int appNo)
     {
         await using var connection = new OdbcConnection(_connectionString);
         await connection.OpenAsync();
 
         const string sql = """
-            UPDATE PUB.cardholder
-            SET PRINT_COUNT = PRINT_COUNT + 1
-            WHERE ID = ?
+            UPDATE "id-print"
+            SET "printed" = 'yes'
+            WHERE "app-no" = ?
             """;
 
         await using var command = new OdbcCommand(sql, connection);
-        command.Parameters.Add(new OdbcParameter("@id", OdbcType.Int) { Value = id });
+        command.Parameters.Add(new OdbcParameter("@appNo", OdbcType.Int) { Value = appNo });
 
-        int rowsAffected = await command.ExecuteNonQueryAsync();
-
-        if (rowsAffected == 0)
-        {
-            _logger.LogWarning("No cardholder found with ID {CardholderId} to update print count.", id);
-        }
+        int rows = await command.ExecuteNonQueryAsync();
+        if (rows > 0)
+            _logger.LogDebug("Marked app-no={AppNo} as printed in OpenEdge", appNo);
     }
 
     public void Dispose()
     {
         // OdbcConnection is disposed via `await using` in each method.
-        // Odbc does not require explicit connection pooling cleanup.
     }
 }

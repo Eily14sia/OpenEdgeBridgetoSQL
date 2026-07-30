@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OpenEdgeBridge")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8065ec1c4138fce4e058746b7229612de5ad4d33")]
 [assembly: System.Reflection.AssemblyProductAttribute("OpenEdgeBridge")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OpenEdgeBridge")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
