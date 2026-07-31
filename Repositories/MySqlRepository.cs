@@ -151,7 +151,8 @@ public class MySqlRepository : IDisposable
         const string sql = """
             SELECT app_no
             FROM id_print
-            WHERE print_count > 0
+            WHERE app_no > 0
+              AND print_count > 0
               AND (printed IS NULL OR printed = 'no')
             """;
 

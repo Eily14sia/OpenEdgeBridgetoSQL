@@ -8,12 +8,15 @@ namespace OpenEdgeBridge.Repositories;
 public class OpenEdgeRepository : IDisposable
 {
     private readonly string _connectionString;
+    private readonly string _connectionStringRead;
     private readonly ILogger<OpenEdgeRepository> _logger;
 
     public OpenEdgeRepository(IConfiguration configuration, ILogger<OpenEdgeRepository> logger)
     {
         _connectionString = configuration.GetConnectionString("OpenEdge")
             ?? throw new InvalidOperationException("OpenEdge connection string not found.");
+        _connectionStringRead = configuration.GetConnectionString("OpenEdgeRead")
+            ?? _connectionString;
         _logger = logger;
     }
 
@@ -21,7 +24,7 @@ public class OpenEdgeRepository : IDisposable
     {
         var idPrints = new List<IdPrint>();
 
-        await using var connection = new OdbcConnection(_connectionString);
+        await using var connection = new OdbcConnection(_connectionStringRead);
         await connection.OpenAsync();
 
         const string sql = """
@@ -50,7 +53,7 @@ public class OpenEdgeRepository : IDisposable
                 "id-type",
                 "image-data",
                 "id-code"
-            FROM "id-print"
+            FROM pub."id-print"
             """;
 
         await using var command = new OdbcCommand(sql, connection);
@@ -121,8 +124,8 @@ public class OpenEdgeRepository : IDisposable
         await connection.OpenAsync();
 
         const string sql = """
-            UPDATE "id-print"
-            SET "printed" = 'yes'
+            UPDATE pub."id-print"
+            SET "printed" = 1
             WHERE "app-no" = ?
             """;
 

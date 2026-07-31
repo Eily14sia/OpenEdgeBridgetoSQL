@@ -1,1 +1,21 @@
-/bin
+# Build output
+bin/
+obj/
+publish/
+
+# Runtime logs
+Logs/
+
+# Visual Studio user settings
+.vs/
+*.user
+*.suo
+*.DotSettings.user
+*.DotSettings
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

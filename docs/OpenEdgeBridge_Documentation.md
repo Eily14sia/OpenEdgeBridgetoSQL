@@ -376,6 +376,7 @@ sc delete OpenEdgeBridge
 | "MySQL connection string not found" | `appsettings.json` not in same folder as `.exe` | Ensure `appsettings.json` is in `C:\OpenEdgeBridge\` |
 | Duplicate rows in MySQL | Missing UNIQUE index | Run the `ALTER TABLE ... ADD UNIQUE INDEX` SQL above |
 | OpenEdge ODBC driver not found | Wrong bitness (32 vs 64) | Use `odbcad32.exe` (64-bit), not the 32-bit one in SysWOW64 |
+| `Failure getting schema read lock (12138)` | SQL engine not initialized for database | 1. Verify `-ServerType Both` or `-ServerType SQL` on proserve<br>2. In sqlexp run: `UPDATE TABLE STATISTICS AND INDEX STATISTICS AND ALL COLUMN STATISTICS;`<br>3. If still failing, restart DB: `proshut` then `proserve` with `-SQLTrc 3` |
 | MySQL not accessible from Entrust | MySQL not running or wrong port | Check XAMPP Control Panel; MySQL must be **Started** |
 | OpenEdge SQL CREATE TABLE fails with "Invalid table name" | Hyphens in table/field names not quoted | Wrap names containing hyphens in double quotes: `"id-print"`, `"batch-no"` |
 | `image-data` field too small | VARBINARY length insufficient | The OpenEdge schema specifies MAX-WIDTH 110; adjust as needed |
