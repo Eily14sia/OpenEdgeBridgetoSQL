@@ -122,7 +122,7 @@ public class OpenEdgeRepository : IDisposable
     /// Safely reads an OpenEdge LOGICAL field regardless of how the ODBC driver
     /// represents it (boolean, integer 1/0, or string "yes"/"no").
     /// </summary>
-    private static string? ReadLogicalAsYesNo(OdbcDataReader reader, int ordinal)
+    private static string? ReadLogicalAsYesNo(System.Data.Common.DbDataReader reader, int ordinal)
     {
         // Attempt 1: native boolean (preferred path for drivers that support it)
         try
