@@ -1,5 +1,46 @@
 # OpenEdge Bridge — Documentation
 
+---
+
+## Sample INSERT Data
+
+### MySQL — `id_print` (10 records)
+
+```sql
+INSERT INTO id_print (batch_no, batch_date, app_no, dob, cp_no, fullname, hcp_fullname, address, hcp_cpno, lname, fname, mname, spa_docno, page_no, book_no, series_no, spa_atty, spa_dt_issue, printed, printed_dt, printed_tm, id_type, id_code, print_count)
+VALUES
+(1, '2026-01-15', 1001, '1990-05-20', 'CP-001', 'Juan Dela Cruz', 'Dr. Maria Santos', '123 Rizal St, Manila', 'HCP-001', 'Dela Cruz', 'Juan', 'Santos', 'SPA-001', 'P001', 'BK001', 'SR001', 'Atty. Reyes', '2025-12-01', 'no', NULL, NULL, 1, 5001, 0),
+(1, '2026-01-15', 1002, '1985-08-12', 'CP-002', 'Maria Clara Reyes', 'Dr. Jose Rizal', '456 Mabini St, Quezon City', 'HCP-002', 'Reyes', 'Maria', 'Clara', 'SPA-002', 'P002', 'BK001', 'SR002', 'Atty. Cruz', '2025-12-02', 'no', NULL, NULL, 1, 5002, 0),
+(1, '2026-01-16', 1003, '1992-03-25', 'CP-003', 'Pedro Penduko', 'Dr. Ana Lopez', '789 Bonifacio Ave, Cebu', 'HCP-003', 'Penduko', 'Pedro', 'Garcia', 'SPA-003', 'P003', 'BK002', 'SR003', 'Atty. Santos', '2025-12-03', 'no', NULL, NULL, 2, 5003, 1),
+(2, '2026-02-10', 1004, '1988-11-30', 'CP-004', 'Ana Patricia Gomez', 'Dr. Luis Torres', '321 Aguinaldo Rd, Davao', 'HCP-004', 'Gomez', 'Ana', 'Patricia', 'SPA-004', 'P004', 'BK002', 'SR004', 'Atty. Reyes', '2025-12-10', 'yes', '2026-02-11', '10:30:00', 1, 5004, 1),
+(2, '2026-02-10', 1005, '1995-07-14', 'CP-005', 'Carlos Miguel Tan', 'Dr. Elena Villanueva', '654 Luna St, Makati', 'HCP-005', 'Tan', 'Carlos', 'Miguel', 'SPA-005', 'P005', 'BK003', 'SR005', 'Atty. Dela Rosa', '2025-12-15', 'no', NULL, NULL, 3, 5005, 2),
+(2, '2026-02-11', 1006, '1982-01-08', 'CP-006', 'Sofia Isabelle Lim', 'Dr. Ramon Bautista', '987 Silang Ave, Pasig', 'HCP-006', 'Lim', 'Sofia', 'Isabelle', 'SPA-006', 'P006', 'BK003', 'SR006', 'Atty. Mercado', '2025-12-20', 'no', NULL, NULL, 1, 5006, 0),
+(3, '2026-03-05', 1007, '1998-09-18', 'CP-007', 'Rafael Antonio Uy', 'Dr. Patricia Ong', '159 Roxas Blvd, Paranaque', 'HCP-007', 'Uy', 'Rafael', 'Antonio', 'SPA-007', 'P007', 'BK004', 'SR007', 'Atty. Garcia', '2026-01-05', 'yes', '2026-03-06', '14:15:00', 2, 5007, 1),
+(3, '2026-03-05', 1008, '1991-12-03', 'CP-008', 'Gabriela Nicole Sy', 'Dr. Fernando Aquino', '753 Quezon Blvd, Taguig', 'HCP-008', 'Sy', 'Gabriela', 'Nicole', 'SPA-008', 'P008', 'BK004', 'SR008', 'Atty. Ramos', '2026-01-10', 'no', NULL, NULL, 1, 5008, 0),
+(3, '2026-03-06', 1009, '1987-04-22', 'CP-009', 'Miguel Alfonso Co', 'Dr. Teresa Javier', '246 Osmena St, Baguio', 'HCP-009', 'Co', 'Miguel', 'Alfonso', 'SPA-009', 'P009', 'BK005', 'SR009', 'Atty. Villar', '2026-01-15', 'no', NULL, NULL, 3, 5009, 3),
+(4, '2026-04-20', 1010, '1993-06-11', 'CP-010', 'Isabella Marie Chua', 'Dr. Roberto Domingo', '135 Kalayaan Ave, Pampanga', 'HCP-010', 'Chua', 'Isabella', 'Marie', 'SPA-010', 'P010', 'BK005', 'SR010', 'Atty. Pineda', '2026-02-01', 'no', NULL, NULL, 1, 5010, 0),
+(4, '2026-04-20', 1011, '1980-10-05', 'CP-011', 'Antonio Luis Pangilinan', 'Dr. Carmen Salazar', '864 EDSA, Mandaluyong', 'HCP-011', 'Pangilinan', 'Antonio', 'Luis', 'SPA-011', 'P011', 'BK006', 'SR011', 'Atty. Hernandez', '2026-02-10', 'yes', '2026-04-21', '09:00:00', 2, 5011, 2);
+```
+
+### OpenEdge (Progress) — `pub."id-print"` (11 records)
+
+```sql
+INSERT INTO pub."id-print" ("batch-no", "batch-date", "app-no", "dob", "cp-no", "fullname", "hcp-fullname", "address", "hcp-cpno", "lname", "fname", "mname", "spa-docno", "page-no", "book-no", "series-no", "spa-atty", "spa-dt-issue", "printed", "printed-dt", "printed-tm", "id-type", "id-code", "print-count")
+VALUES
+(1, '2026-01-15', 1001, '1990-05-20', 'CP-001', 'Juan Dela Cruz', 'Dr. Maria Santos', '123 Rizal St, Manila', 'HCP-001', 'Dela Cruz', 'Juan', 'Santos', 'SPA-001', 'P001', 'BK001', 'SR001', 'Atty. Reyes', '2025-12-01', 0, NULL, NULL, 1, 5001, 0),
+(1, '2026-01-15', 1002, '1985-08-12', 'CP-002', 'Maria Clara Reyes', 'Dr. Jose Rizal', '456 Mabini St, Quezon City', 'HCP-002', 'Reyes', 'Maria', 'Clara', 'SPA-002', 'P002', 'BK001', 'SR002', 'Atty. Cruz', '2025-12-02', 0, NULL, NULL, 1, 5002, 0),
+(1, '2026-01-16', 1003, '1992-03-25', 'CP-003', 'Pedro Penduko', 'Dr. Ana Lopez', '789 Bonifacio Ave, Cebu', 'HCP-003', 'Penduko', 'Pedro', 'Garcia', 'SPA-003', 'P003', 'BK002', 'SR003', 'Atty. Santos', '2025-12-03', 0, NULL, NULL, 2, 5003, 1),
+(2, '2026-02-10', 1004, '1988-11-30', 'CP-004', 'Ana Patricia Gomez', 'Dr. Luis Torres', '321 Aguinaldo Rd, Davao', 'HCP-004', 'Gomez', 'Ana', 'Patricia', 'SPA-004', 'P004', 'BK002', 'SR004', 'Atty. Reyes', '2025-12-10', 1, '2026-02-11', '10:30:00', 1, 5004, 1),
+(2, '2026-02-10', 1005, '1995-07-14', 'CP-005', 'Carlos Miguel Tan', 'Dr. Elena Villanueva', '654 Luna St, Makati', 'HCP-005', 'Tan', 'Carlos', 'Miguel', 'SPA-005', 'P005', 'BK003', 'SR005', 'Atty. Dela Rosa', '2025-12-15', 0, NULL, NULL, 3, 5005, 2),
+(2, '2026-02-11', 1006, '1982-01-08', 'CP-006', 'Sofia Isabelle Lim', 'Dr. Ramon Bautista', '987 Silang Ave, Pasig', 'HCP-006', 'Lim', 'Sofia', 'Isabelle', 'SPA-006', 'P006', 'BK003', 'SR006', 'Atty. Mercado', '2025-12-20', 0, NULL, NULL, 1, 5006, 0),
+(3, '2026-03-05', 1007, '1998-09-18', 'CP-007', 'Rafael Antonio Uy', 'Dr. Patricia Ong', '159 Roxas Blvd, Paranaque', 'HCP-007', 'Uy', 'Rafael', 'Antonio', 'SPA-007', 'P007', 'BK004', 'SR007', 'Atty. Garcia', '2026-01-05', 1, '2026-03-06', '14:15:00', 2, 5007, 1),
+(3, '2026-03-05', 1008, '1991-12-03', 'CP-008', 'Gabriela Nicole Sy', 'Dr. Fernando Aquino', '753 Quezon Blvd, Taguig', 'HCP-008', 'Sy', 'Gabriela', 'Nicole', 'SPA-008', 'P008', 'BK004', 'SR008', 'Atty. Ramos', '2026-01-10', 0, NULL, NULL, 1, 5008, 0),
+(3, '2026-03-06', 1009, '1987-04-22', 'CP-009', 'Miguel Alfonso Co', 'Dr. Teresa Javier', '246 Osmena St, Baguio', 'HCP-009', 'Co', 'Miguel', 'Alfonso', 'SPA-009', 'P009', 'BK005', 'SR009', 'Atty. Villar', '2026-01-15', 0, NULL, NULL, 3, 5009, 3),
+(4, '2026-04-20', 1010, '1993-06-11', 'CP-010', 'Isabella Marie Chua', 'Dr. Roberto Domingo', '135 Kalayaan Ave, Pampanga', 'HCP-010', 'Chua', 'Isabella', 'Marie', 'SPA-010', 'P010', 'BK005', 'SR010', 'Atty. Pineda', '2026-02-01', 0, NULL, NULL, 1, 5010, 0),
+(4, '2026-04-20', 1011, '1980-10-05', 'CP-011', 'Antonio Luis Pangilinan', 'Dr. Carmen Salazar', '864 EDSA, Mandaluyong', 'HCP-011', 'Pangilinan', 'Antonio', 'Luis', 'SPA-011', 'P011', 'BK006', 'SR011', 'Atty. Hernandez', '2026-02-10', 1, '2026-04-21', '09:00:00', 2, 5011, 2);
+```
+
+
 **Version:** 1.0  
 **Date:** July 23, 2026  
 **Purpose:** Sync bridge between Progress OpenEdge and MySQL for Entrust Instant ID card printing. Reads `"id-print"` from OpenEdge and mirrors it to MySQL's `id_print` table.
@@ -100,29 +141,30 @@ Open **Proenv** as Administrator and run:
 
 ```bat
 :: Create a folder for your database
-mkdir C:\OpenEdgeDB
-cd C:\OpenEdgeDB
+mkdir C:\OpenEdgeDatabases
+cd C:\OpenEdgeDatabases
 
-:: Create an empty database called 'instantid'
-prodb instantid empty
+:: Create an empty database called 'iddb'
+prodb iddb empty
 ```
 
-This creates `instantid.db` and related files in `C:\OpenEdgeDB\`.
+This creates `iddb.db` and related files in `C:\OpenEdgeDatabases\`.
 
-### Step 0-C: Start the Database with SQL Broker
+### Step 0-C: Start the Database Server
 
 In **Proenv**, run:
 
 ```bat
-:: Start the database for multi-user access with SQL enabled
-proserve C:\OpenEdgeDB\instantid -S 20000 -n 100 -ServerType SQL
+:: Start the database for multi-user access with both 4GL and SQL enabled
+proserve "C:\OpenEdgeDatabases\iddb.db" -S 11918 -ServerType Both -n 51 -L 8192
 ```
 
 | Parameter | Meaning |
 |-----------|---------|
-| `-S 20000` | Service port (SQL and 4GL clients connect on this port) |
-| `-n 100`  | Maximum concurrent users |
-| `-ServerType SQL` | **Required** — enables the SQL-92 engine |
+| `-S 11918` | Service port (SQL and 4GL clients connect on this port) |
+| `-n 51` | Maximum concurrent users |
+| `-L 8192` | Lock table size (entries) |
+| `-ServerType Both` | **Required** — enables both 4GL and SQL-92 engine |
 
 The database is now running. Keep this Proenv window open.
 
@@ -133,17 +175,209 @@ The database is now running. Keep this Proenv window open.
 3. Select **Progress OpenEdge 12.x Driver** (or "DataDirect OpenEdge SQL Server")
 4. Configure:
    - **Data Source Name:** `OpenEdgeInstantID`
-   - **Host:** `localhost`
-   - **Port:** `20000`
-   - **Database:** `instantid`
+   - **Description:** `OpenEdge Instant ID Database`
+   - **Host Name:** `localhost`
+   - **Port Number:** `11918`
+   - **Database Name:** `iddb`
    - **User ID:** `admin`
-   - **Password:** `admin`
 5. Click **Test Connect** → should succeed
 6. Click **OK**
 
-### Step 0-E: Run the CREATE TABLE SQL
+### Step 0-E: Create the Database Schema (`.df` File)
 
-Connect to your local OpenEdge database using any ODBC-compatible SQL client (such as **DBeaver**, **HeidiSQL**, or the built-in **OpenEdge SQL Explorer**), then paste and run the SQL in the sections below.
+The table schema is defined in a `.df` (Data Definition) file. Create a file named `iddb.df` in `C:\OpenEdgeDatabases\` with the following content:
+
+```
+ADD TABLE "id-print"
+  AREA "Schema Area"
+  DUMP-NAME "id-print"
+
+ADD FIELD "batch-no" OF "id-print" AS integer 
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+
+ADD FIELD "batch-date" OF "id-print" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+
+ADD FIELD "app-no" OF "id-print" AS integer 
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  POSITION 4
+  MAX-WIDTH 4
+  ORDER 30
+
+ADD FIELD "dob" OF "id-print" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  POSITION 5
+  MAX-WIDTH 4
+  ORDER 40
+
+ADD FIELD "cp-no" OF "id-print" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  POSITION 6
+  MAX-WIDTH 30
+  ORDER 50
+
+ADD FIELD "fullname" OF "id-print" AS character 
+  FORMAT "x(65)"
+  INITIAL ""
+  POSITION 7
+  MAX-WIDTH 130
+  ORDER 60
+
+ADD FIELD "hcp-fullname" OF "id-print" AS character 
+  FORMAT "x(65)"
+  INITIAL ""
+  POSITION 8
+  MAX-WIDTH 130
+  ORDER 70
+
+ADD FIELD "address" OF "id-print" AS character 
+  FORMAT "x(65)"
+  INITIAL ""
+  POSITION 9
+  MAX-WIDTH 130
+  ORDER 80
+
+ADD FIELD "hcp-cpno" OF "id-print" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  POSITION 10
+  MAX-WIDTH 30
+  ORDER 90
+
+ADD FIELD "lname" OF "id-print" AS character 
+  FORMAT "x(55)"
+  INITIAL ""
+  POSITION 11
+  MAX-WIDTH 110
+  ORDER 100
+
+ADD FIELD "fname" OF "id-print" AS character 
+  FORMAT "x(55)"
+  INITIAL ""
+  POSITION 12
+  MAX-WIDTH 110
+  ORDER 110
+
+ADD FIELD "mname" OF "id-print" AS character 
+  FORMAT "x(55)"
+  INITIAL ""
+  POSITION 13
+  MAX-WIDTH 110
+  ORDER 120
+
+ADD FIELD "spa-docno" OF "id-print" AS character 
+  FORMAT "x(25)"
+  INITIAL ""
+  POSITION 14
+  MAX-WIDTH 50
+  ORDER 130
+
+ADD FIELD "page-no" OF "id-print" AS character 
+  FORMAT "x(20)"
+  INITIAL ""
+  POSITION 15
+  MAX-WIDTH 40
+  ORDER 140
+
+ADD FIELD "book-no" OF "id-print" AS character 
+  FORMAT "x(20)"
+  INITIAL ""
+  POSITION 16
+  MAX-WIDTH 40
+  ORDER 150
+
+ADD FIELD "series-no" OF "id-print" AS character 
+  FORMAT "x(20)"
+  INITIAL ""
+  POSITION 17
+  MAX-WIDTH 40
+  ORDER 160
+
+ADD FIELD "spa-atty" OF "id-print" AS character 
+  FORMAT "x(65)"
+  INITIAL ""
+  POSITION 18
+  MAX-WIDTH 130
+  ORDER 170
+
+ADD FIELD "spa-dt-issue" OF "id-print" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  POSITION 19
+  MAX-WIDTH 4
+  ORDER 180
+
+ADD FIELD "printed" OF "id-print" AS logical 
+  FORMAT "yes/no"
+  INITIAL "no"
+  POSITION 20
+  MAX-WIDTH 1
+  ORDER 190
+
+ADD FIELD "printed-dt" OF "id-print" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  POSITION 21
+  MAX-WIDTH 4
+  ORDER 200
+
+ADD FIELD "printed-tm" OF "id-print" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  POSITION 22
+  MAX-WIDTH 70
+  ORDER 210
+
+ADD FIELD "id-type" OF "id-print" AS integer 
+  DESCRIPTION "1 = for RTC, 2=senior"
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  POSITION 23
+  MAX-WIDTH 4
+  ORDER 220
+
+ADD FIELD "image-data" OF "id-print" AS raw 
+  FORMAT "x(55)"
+  INITIAL ""
+  POSITION 24
+  MAX-WIDTH 110
+  ORDER 230
+
+ADD FIELD "id-code" OF "id-print" AS integer 
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  POSITION 25
+  MAX-WIDTH 4
+  ORDER 240
+
+.
+PSC
+cpstream=ISO8859-1
+.
+0000003166
+```
+
+Then, in **Proenv**, load the `.df` file into the database:
+
+```bat
+cd C:\OpenEdgeDatabases
+prodict iddb
+```
+
+In the Data Dictionary menu, select **Admin → Load Data Definitions → .df file**, then choose `iddb.df`.
+
+> **Note:** The database name is `iddb` and the schema resides under the `PUB` area (default).
 
 ---
 
@@ -253,8 +487,8 @@ After installation, open **ODBC Data Sources (64-bit)** and create a **System DS
 5. Configure:
    - **Data Source Name:** e.g., `OpenEdgeInstantID`
    - **Host:** (provided by your OpenEdge team, or `localhost` if local)
-   - **Port:** (typically `20000` or as provided)
-   - **Database:** (provided by your OpenEdge team, or `instantid` if local)
+   - **Port:** (provided by your OpenEdge team, or `11918` if local)
+   - **Database:** (provided by your OpenEdge team, or `iddb` if local)
    - **User ID / Password:** (provided by your OpenEdge team)
 6. Click **Test Connect** to verify, then **OK**
 

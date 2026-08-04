@@ -72,6 +72,11 @@ public class Program
             cts.Cancel();
         };
 
+        // -----------------------------------------------------------------
+        // Start the host (required for Windows Service to report "Started" to SCM)
+        // -----------------------------------------------------------------
+        await host.StartAsync(cts.Token);
+
         try
         {
             while (!cts.Token.IsCancellationRequested)
@@ -95,6 +100,10 @@ public class Program
         catch (Exception ex)
         {
             logger.LogCritical(ex, "Fatal error in sync loop.");
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
         }
 
         logger.LogInformation("OpenEdge Bridge stopped.");

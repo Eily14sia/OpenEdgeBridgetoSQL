@@ -106,7 +106,7 @@ public class OpenEdgeRepository : IDisposable
                 SeriesNo    = reader.IsDBNull(oSeriesNo)    ? null : reader.GetString(oSeriesNo),
                 SpaAtty     = reader.IsDBNull(oSpaAtty)     ? null : reader.GetString(oSpaAtty),
                 SpaDtIssue  = reader.IsDBNull(oSpaDtIssue)  ? null : reader.GetDateTime(oSpaDtIssue),
-                Printed     = reader.IsDBNull(oPrinted)     ? null : (reader.GetBoolean(oPrinted) ? "yes" : "no"),
+                Printed     = reader.IsDBNull(oPrinted)     ? null : ReadLogicalAsYesNo(reader, oPrinted),
                 PrintedDt   = reader.IsDBNull(oPrintedDt)   ? null : reader.GetDateTime(oPrintedDt),
                 PrintedTm   = reader.IsDBNull(oPrintedTm)   ? null : reader.GetString(oPrintedTm),
                 IdType      = reader.IsDBNull(oIdType)      ? null : reader.GetInt32(oIdType),
@@ -116,6 +116,42 @@ public class OpenEdgeRepository : IDisposable
         }
 
         return idPrints;
+    }
+
+    /// <summary>
+    /// Safely reads an OpenEdge LOGICAL field regardless of how the ODBC driver
+    /// represents it (boolean, integer 1/0, or string "yes"/"no").
+    /// </summary>
+    private static string? ReadLogicalAsYesNo(OdbcDataReader reader, int ordinal)
+    {
+        // Attempt 1: native boolean (preferred path for drivers that support it)
+        try
+        {
+            return reader.GetBoolean(ordinal) ? "yes" : "no";
+        }
+        catch (InvalidCastException)
+        {
+            // Fall through to string-based detection
+        }
+
+        // Attempt 2: read as object and detect type at runtime
+        object raw = reader.GetValue(ordinal);
+        if (raw == DBNull.Value)
+            return null;
+
+        return raw switch
+        {
+            bool b            => b ? "yes" : "no",
+            int i             => i != 0 ? "yes" : "no",
+            short s           => s != 0 ? "yes" : "no",
+            long l            => l != 0 ? "yes" : "no",
+            string str        => str.Trim().ToLowerInvariant() switch
+            {
+                "yes" or "true" or "1" or "y" => "yes",
+                _                             => "no"
+            },
+            _ => "no"
+        };
     }
 
     public async Task MarkPrintedAsync(int appNo)
