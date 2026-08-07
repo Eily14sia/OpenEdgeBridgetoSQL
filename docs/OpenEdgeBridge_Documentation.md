@@ -94,6 +94,8 @@ All 24 fields from the `id-print` table are synced, including:
 
 Runs every N seconds (configurable in `appsettings.json`). Uses **INSERT ON DUPLICATE KEY UPDATE** to avoid duplicates. `print_count` is only inserted on first sync; subsequent updates do NOT overwrite it (Instant ID manages `print_count`).
 
+> **Note:** `signature_data` and `qr_data` are **not** part of this sync — they are MySQL-only columns populated by Entrust Instant ID and never touched by the bridge (see [Database Tables](#database-tables)).
+
 ### MySQL → OpenEdge (Printed Back-Sync)
 
 ```
@@ -452,6 +454,8 @@ CREATE TABLE IF NOT EXISTS id_print (
     printed_tm     VARCHAR(35)   NULL,
     id_type        INT           NULL        COMMENT '1 = for RTC, 2 = senior',
     image_data     LONGBLOB      NULL,
+    signature_data LONGBLOB      NULL        COMMENT 'Signature image; written by Entrust Instant ID (MySQL only, NOT synced from OpenEdge)',
+    qr_data        LONGBLOB      NULL        COMMENT 'QR code image; written by Entrust Instant ID (MySQL only, NOT synced from OpenEdge)',
     id_code        INT           NULL,
     print_count    INT           NULL        COMMENT 'Incremented by Instant ID; triggers printed=yes back-sync',
     PRIMARY KEY (id),
@@ -462,6 +466,52 @@ CREATE TABLE IF NOT EXISTS id_print (
 ```
 
 > **Note:** `id` is an internal auto-increment primary key. `app_no` is the unique business key — the bridge uses it for deduplication (`ON DUPLICATE KEY UPDATE` fires when the same `app_no` is synced again).
+
+> **MySQL-only columns (`signature_data`, `qr_data`):** These store the cardholder's signature and QR-code images and are **MySQL only**. They do **not** exist in the OpenEdge `"id-print"` table and are **never read from or written back to OpenEdge**. Entrust Instant ID populates them directly in MySQL. The bridge deliberately leaves them untouched — it does not include them in its INSERT/UPDATE, so syncing from OpenEdge will never overwrite them.
+
+> **Already have the table?** If you created `id_print` before these columns existed, add them with:
+> ```sql
+> ALTER TABLE id_print
+>   ADD COLUMN signature_data LONGBLOB NULL AFTER image_data,
+>   ADD COLUMN qr_data        LONGBLOB NULL AFTER signature_data;
+> ```
+
+### Column Comparison — Plain English
+
+Think of each row as **one person's ID-card application folder**. The columns are the details written on that folder.
+
+| OpenEdge name | MySQL name | Plain English meaning |
+|---|---|---|
+| `batch-no` | `batch_no` | **Group number** — which batch/run of applications this person came in with (like a batch printing number) |
+| `batch-date` | `batch_date` | **Date of that group** — when their batch was made |
+| `app-no` | `app_no` | **Application number** — the unique file number of this person's ID application. This is the "fingerprint" that tells us which person is which |
+| `dob` | `dob` | **Date of birth** |
+| `cp-no` | `cp_no` | **The person's reference number** (their own control/card number) |
+| `fullname` | `fullname` | **Full name** — complete name all in one |
+| `hcp-fullname` | `hcp_fullname` | **Doctor's name** — the healthcare provider attached to this person |
+| `address` | `address` | **Home address** |
+| `hcp-cpno` | `hcp_cpno` | **Doctor's number** — the healthcare provider's own reference number |
+| `lname` | `lname` | **Last name** (surname) |
+| `fname` | `fname` | **First name** |
+| `mname` | `mname` | **Middle name** |
+| `spa-docno` | `spa_docno` | **Permission letter number** — the number of the Special Power of Attorney (SPA) document |
+| `spa-atty` | `spa_atty` | **Lawyer's name** — the attorney who signed that permission letter |
+| `spa-dt-issue` | `spa_dt_issue` | **Date the permission letter was issued** |
+| `page-no` | `page_no` | **Page number** — which page in the record book this person is on |
+| `book-no` | `book_no` | **Book number** — which record book |
+| `series-no` | `series_no` | **Series number** — the serial number of the ID |
+| `id-type` | `id_type` | **Kind of ID** — `1` = regular (RTC), `2` = senior citizen |
+| `image-data` | `image_data` | **The person's photo** (picture file) |
+| `id-code` | `id_code` | **ID code** — the code number printed on the card |
+| `printed` | `printed` | **Has it been printed yet?** — `yes` or `no` |
+| `printed-dt` | `printed_dt` | **Date it was printed** |
+| `printed-tm` | `printed_tm` | **Time it was printed** |
+| — | `signature_data` | **Person's signature picture** — *MySQL only*. Not in OpenEdge, not synced back. Entrust fills this in |
+| — | `qr_data` | **QR code picture** — *MySQL only*. Not in OpenEdge, not synced back. Entrust fills this in |
+| — | `print_count` | **How many times it got printed** — *MySQL only*. Instant ID counts this; it's never overwritten by the bridge |
+| — | `id` | **Row number** — MySQL's own internal counter. Not business data, ignore it |
+
+**30-second summary:** The bridge copies the person's details (name, birthdate, address, photo, etc.) **from OpenEdge → MySQL**, like photocopying the folder. `app_no` is the **matchmaker** — it makes sure updates land on the right person. The three columns that exist **only in MySQL** (`signature_data`, `qr_data`, `print_count`) are filled in by the **Entrust machine**, and the bridge never touches them.
 
 ---
 
@@ -497,6 +547,18 @@ After installation, open **ODBC Data Sources (64-bit)** and create a **System DS
 Connect to your OpenEdge database using any ODBC-compatible SQL client (DBeaver, HeidiSQL, etc.) and paste the SQL from the [Database Tables](#database-tables) section above:
 
 - Run the **`"id-print"`** CREATE TABLE
+
+#### 2-B. Grant Table Permissions to the Login User
+
+The bridge connects to OpenEdge using the **User ID** configured in the ODBC DSN (e.g., `admin`). If your login user is **not** `admin`, it needs explicit permissions on the table — otherwise the bridge fails with an access-denied error when it starts.
+
+Run the following from a DBA account (e.g., `admin`), replacing `your_login_user` with the actual user you put in the DSN:
+
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON pub."id-print" TO your_login_user;
+```
+
+> **Note:** `SELECT` is required to read records for the OpenEdge → MySQL sync, and `UPDATE` is required for the printed back-sync (`printed = yes`). `INSERT`/`DELETE` are included for completeness. `pub` is the default schema area, and the double quotes around `"id-print"` are required because of the hyphen in the table name.
 
 ### 3. Install XAMPP
 
