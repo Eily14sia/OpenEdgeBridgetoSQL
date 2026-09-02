@@ -22,41 +22,97 @@ public class OpenEdgeRepository : IDisposable
 
     public async Task<List<IdPrint>> GetIdPrintsAsync()
     {
+        // Full sync — no batch_no filter.
+        return await GetIdPrintsInternalAsync(null);
+    }
+
+    /// <summary>
+    /// Incremental sync — only fetch records from batches newer than the given batch_no.
+    /// Pass null for a full sync.
+    /// </summary>
+    public async Task<List<IdPrint>> GetIdPrintsNewerThanAsync(int? minBatchNo)
+    {
+        return await GetIdPrintsInternalAsync(minBatchNo);
+    }
+
+    private async Task<List<IdPrint>> GetIdPrintsInternalAsync(int? minBatchNo)
+    {
         var idPrints = new List<IdPrint>();
 
         await using var connection = new OdbcConnection(_connectionStringRead);
         await connection.OpenAsync();
 
-        const string sql = """
-            SELECT
-                "batch-no",
-                "batch-date",
-                "app-no",
-                "dob",
-                "cp-no",
-                "fullname",
-                "hcp-fullname",
-                "address",
-                "hcp-cpno",
-                "lname",
-                "fname",
-                "mname",
-                "spa-docno",
-                "page-no",
-                "book-no",
-                "series-no",
-                "spa-atty",
-                "spa-dt-issue",
-                "printed",
-                "printed-dt",
-                "printed-tm",
-                "id-type",
-                "image-data",
-                "id-code"
-            FROM pub."id-print"
-            """;
+        string sql;
+        if (minBatchNo.HasValue)
+        {
+            sql = """
+                SELECT
+                    "batch-no",
+                    "batch-date",
+                    "app-no",
+                    "dob",
+                    "cp-no",
+                    "fullname",
+                    "hcp-fullname",
+                    "address",
+                    "hcp-cpno",
+                    "lname",
+                    "fname",
+                    "mname",
+                    "spa-docno",
+                    "page-no",
+                    "book-no",
+                    "series-no",
+                    "spa-atty",
+                    "spa-dt-issue",
+                    "printed",
+                    "printed-dt",
+                    "printed-tm",
+                    "id-type",
+                    "image-data",
+                    "id-code"
+                FROM pub."id-print"
+                WHERE "batch-no" > ?
+                """;
+        }
+        else
+        {
+            sql = """
+                SELECT
+                    "batch-no",
+                    "batch-date",
+                    "app-no",
+                    "dob",
+                    "cp-no",
+                    "fullname",
+                    "hcp-fullname",
+                    "address",
+                    "hcp-cpno",
+                    "lname",
+                    "fname",
+                    "mname",
+                    "spa-docno",
+                    "page-no",
+                    "book-no",
+                    "series-no",
+                    "spa-atty",
+                    "spa-dt-issue",
+                    "printed",
+                    "printed-dt",
+                    "printed-tm",
+                    "id-type",
+                    "image-data",
+                    "id-code"
+                FROM pub."id-print"
+                """;
+        }
 
         await using var command = new OdbcCommand(sql, connection);
+        if (minBatchNo.HasValue)
+        {
+            command.Parameters.Add(new OdbcParameter("@minBatchNo", OdbcType.Int) { Value = minBatchNo.Value });
+        }
+
         await using var reader = await command.ExecuteReaderAsync();
 
         int oBatchNo     = reader.GetOrdinal("batch-no");

@@ -10,26 +10,36 @@
 
 This guide walks you through setting up everything **on your PC** so that ID-card data flows from the **central OpenEdge server** (managed by the system provider) into a **local MySQL database** (run via XAMPP), which is then read by the **Entrust Instant ID** card-printing machine.
 
-```
-┌─────────────────────────────────────┐
-│  OpenEdge Server (REMOTE —          │  ← Provided & managed by the system provider
-│  hosted at the provider's site)     │
-└───────────────┬─────────────────────┘
-                │  OpenEdge ODBC Driver (you install this)
-┌───────────────▼─────────────────────┐
-│  OpenEdge Bridge Service            │  ← Runs on YOUR PC
-│  (OpenEdgeBridge.exe)               │
-└───────────────┬─────────────────────┘
-                │
-┌───────────────▼─────────────────────┐
-│  MySQL (XAMPP) — LOCAL              │  ← Runs on YOUR PC
-│  database: instantid_bridge         │
-└───────────────┬─────────────────────┘
-                │  MySQL Connector/J (JDBC)
-┌───────────────▼─────────────────────┐
-│  Entrust Instant ID                 │  ← Card issuance / printing machine
-└─────────────────────────────────────┘
-```
+<table style="width:100%; max-width:480px; margin:14px auto; border-collapse:collapse; font-size:9pt; font-family:Helvetica,Arial,sans-serif;">
+<tr><td style="border:2pt solid #0f3d6e; padding:8px 12px; text-align:center; background:#eef4fb;">
+<strong style="color:#0f3d6e;">OpenEdge Server (REMOTE)</strong><br/>
+<span style="font-size:8pt;">Hosted at the provider's site</span><br/>
+<em style="font-size:7.5pt; color:#666;">&larr; Provided &amp; managed by the system provider</em>
+</td></tr>
+<tr><td style="text-align:center; padding:7px 0; color:#0f3d6e; font-weight:bold;">
+&#9660; OpenEdge ODBC Driver <em style="font-weight:normal;">(you install this)</em>
+</td></tr>
+<tr><td style="border:2pt solid #0f3d6e; padding:8px 12px; text-align:center; background:#eef4fb;">
+<strong style="color:#0f3d6e;">OpenEdge Bridge Service</strong><br/>
+<span style="font-size:8pt;">(OpenEdgeBridge.exe)</span><br/>
+<em style="font-size:7.5pt; color:#666;">&larr; Runs on YOUR PC</em>
+</td></tr>
+<tr><td style="text-align:center; padding:7px 0;">
+&#9660;
+</td></tr>
+<tr><td style="border:2pt solid #0f3d6e; padding:8px 12px; text-align:center; background:#eef4fb;">
+<strong style="color:#0f3d6e;">MySQL (XAMPP) &mdash; LOCAL</strong><br/>
+<span style="font-size:8pt;">database: instantid_bridge</span><br/>
+<em style="font-size:7.5pt; color:#666;">&larr; Runs on YOUR PC</em>
+</td></tr>
+<tr><td style="text-align:center; padding:7px 0; color:#0f3d6e; font-weight:bold;">
+&#9660; MySQL Connector/J (JDBC)
+</td></tr>
+<tr><td style="border:2pt solid #0f3d6e; padding:8px 12px; text-align:center; background:#eef4fb;">
+<strong style="color:#0f3d6e;">Entrust Instant ID</strong><br/>
+<em style="font-size:7.5pt; color:#666;">&larr; Card issuance / printing machine</em>
+</td></tr>
+</table>
 
 **In short, you need to install 4 things on your PC:**
 

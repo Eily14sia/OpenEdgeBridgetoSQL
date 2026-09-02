@@ -22,91 +22,122 @@ public class MySqlRepository : IDisposable
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        // Use INSERT ... ON DUPLICATE KEY UPDATE keyed on app_no.
-        // If the same app_no already exists, all other columns are refreshed.
-        const string sql = """
-            INSERT INTO id_print
-            (
-                batch_no,
-                batch_date,
-                app_no,
-                dob,
-                cp_no,
-                fullname,
-                hcp_fullname,
-                address,
-                hcp_cpno,
-                lname,
-                fname,
-                mname,
-                spa_docno,
-                page_no,
-                book_no,
-                series_no,
-                spa_atty,
-                spa_dt_issue,
-                printed,
-                printed_dt,
-                printed_tm,
-                id_type,
-                image_data,
-                id_code,
-                print_count
-            )
-            VALUES
-            (
-                @batch_no,
-                @batch_date,
-                @app_no,
-                @dob,
-                @cp_no,
-                @fullname,
-                @hcp_fullname,
-                @address,
-                @hcp_cpno,
-                @lname,
-                @fname,
-                @mname,
-                @spa_docno,
-                @page_no,
-                @book_no,
-                @series_no,
-                @spa_atty,
-                @spa_dt_issue,
-                @printed,
-                @printed_dt,
-                @printed_tm,
-                @id_type,
-                @image_data,
-                @id_code,
-                @print_count
-            )
-            ON DUPLICATE KEY UPDATE
-                batch_date    = VALUES(batch_date),
-                dob           = VALUES(dob),
-                cp_no         = VALUES(cp_no),
-                fullname      = VALUES(fullname),
-                hcp_fullname  = VALUES(hcp_fullname),
-                address       = VALUES(address),
-                hcp_cpno      = VALUES(hcp_cpno),
-                lname         = VALUES(lname),
-                fname         = VALUES(fname),
-                mname         = VALUES(mname),
-                spa_docno     = VALUES(spa_docno),
-                page_no       = VALUES(page_no),
-                book_no       = VALUES(book_no),
-                series_no     = VALUES(series_no),
-                spa_atty      = VALUES(spa_atty),
-                spa_dt_issue  = VALUES(spa_dt_issue),
-                printed       = VALUES(printed),
-                printed_dt    = VALUES(printed_dt),
-                printed_tm    = VALUES(printed_tm),
-                id_type       = VALUES(id_type),
-                image_data    = VALUES(image_data),
-                id_code       = VALUES(id_code)
-            """;
+        // Check if the record already exists by app_no to avoid burning
+        // auto-increment IDs on every INSERT ... ON DUPLICATE KEY UPDATE cycle.
+        // (InnoDB allocates the next auto-increment value even when the INSERT
+        //  becomes an UPDATE, causing large gaps over repeated sync runs.)
+        const string checkSql = "SELECT COUNT(1) FROM id_print WHERE app_no = @app_no";
+        await using var checkCmd = new MySqlCommand(checkSql, connection);
+        checkCmd.Parameters.AddWithValue("@app_no", (object?)record.AppNo ?? DBNull.Value);
+        bool exists = Convert.ToInt64(await checkCmd.ExecuteScalarAsync()) > 0;
 
-        await using var cmd = new MySqlCommand(sql, connection);
+        if (exists)
+        {
+            const string updateSql = """
+                UPDATE id_print
+                SET
+                    batch_no      = @batch_no,
+                    batch_date    = @batch_date,
+                    dob           = @dob,
+                    cp_no         = @cp_no,
+                    fullname      = @fullname,
+                    hcp_fullname  = @hcp_fullname,
+                    address       = @address,
+                    hcp_cpno      = @hcp_cpno,
+                    lname         = @lname,
+                    fname         = @fname,
+                    mname         = @mname,
+                    spa_docno     = @spa_docno,
+                    page_no       = @page_no,
+                    book_no       = @book_no,
+                    series_no     = @series_no,
+                    spa_atty      = @spa_atty,
+                    spa_dt_issue  = @spa_dt_issue,
+                    printed       = @printed,
+                    printed_dt    = @printed_dt,
+                    printed_tm    = @printed_tm,
+                    id_type       = @id_type,
+                    image_data    = @image_data,
+                    id_code       = @id_code,
+                    print_count   = @print_count
+                WHERE app_no = @app_no
+                """;
+
+            await using var cmd = new MySqlCommand(updateSql, connection);
+            AddUpsertParameters(cmd, record);
+            await cmd.ExecuteNonQueryAsync();
+            _logger.LogDebug("Updated id-print record app_no={AppNo}", record.AppNo);
+        }
+        else
+        {
+            const string insertSql = """
+                INSERT INTO id_print
+                (
+                    batch_no,
+                    batch_date,
+                    app_no,
+                    dob,
+                    cp_no,
+                    fullname,
+                    hcp_fullname,
+                    address,
+                    hcp_cpno,
+                    lname,
+                    fname,
+                    mname,
+                    spa_docno,
+                    page_no,
+                    book_no,
+                    series_no,
+                    spa_atty,
+                    spa_dt_issue,
+                    printed,
+                    printed_dt,
+                    printed_tm,
+                    id_type,
+                    image_data,
+                    id_code,
+                    print_count
+                )
+                VALUES
+                (
+                    @batch_no,
+                    @batch_date,
+                    @app_no,
+                    @dob,
+                    @cp_no,
+                    @fullname,
+                    @hcp_fullname,
+                    @address,
+                    @hcp_cpno,
+                    @lname,
+                    @fname,
+                    @mname,
+                    @spa_docno,
+                    @page_no,
+                    @book_no,
+                    @series_no,
+                    @spa_atty,
+                    @spa_dt_issue,
+                    @printed,
+                    @printed_dt,
+                    @printed_tm,
+                    @id_type,
+                    @image_data,
+                    @id_code,
+                    @print_count
+                )
+                """;
+
+            await using var cmd = new MySqlCommand(insertSql, connection);
+            AddUpsertParameters(cmd, record);
+            await cmd.ExecuteNonQueryAsync();
+            _logger.LogDebug("Inserted id-print record batch_no={BatchNo} app_no={AppNo}", record.BatchNo, record.AppNo);
+        }
+    }
+
+    private static void AddUpsertParameters(MySqlCommand cmd, IdPrint record)
+    {
         cmd.Parameters.AddWithValue("@batch_no",     (object?)record.BatchNo     ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@batch_date",   (object?)record.BatchDate   ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@app_no",       (object?)record.AppNo       ?? DBNull.Value);
@@ -132,9 +163,26 @@ public class MySqlRepository : IDisposable
         cmd.Parameters.AddWithValue("@image_data",   (object?)record.ImageData   ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@id_code",      (object?)record.IdCode      ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@print_count",  (object?)record.PrintCount  ?? DBNull.Value);
+    }
 
-        await cmd.ExecuteNonQueryAsync();
-        _logger.LogDebug("Upserted id-print record batch_no={BatchNo} app_no={AppNo}", record.BatchNo, record.AppNo);
+    /// <summary>
+    /// Returns the highest batch_no currently stored in MySQL.
+    /// Used for incremental sync — only fetch newer batches from OpenEdge.
+    /// Each batch from OpenEdge contains ~100 records.
+    /// </summary>
+    public async Task<int?> GetMaxBatchNoAsync()
+    {
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string sql = "SELECT MAX(batch_no) FROM id_print";
+        await using var cmd = new MySqlCommand(sql, connection);
+        object? result = await cmd.ExecuteScalarAsync();
+
+        if (result == null || result is DBNull)
+            return null;
+
+        return Convert.ToInt32(result);
     }
 
     /// <summary>
