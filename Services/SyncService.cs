@@ -13,16 +13,14 @@ public class SyncService
     private const int MaxRetries = 3;
 
     /// <summary>
-    /// Cycle counter. Every FullSyncIntervalCycles iterations a full
-    /// (non-incremental) sync is triggered to catch updates to existing rows.
+    /// How often a full (non-incremental) sync may run, measured from the last
+    /// successful full sync persisted in MySQL. Set to 0 to DISABLE periodic
+    /// full syncs entirely — only the initial seed (first run, no stored
+    /// timestamp) performs a full sync. Use 0 when OpenEdge id-print rows are
+    /// write-once (new batches only, no in-place edits).
+    /// Read from appsettings.json (Sync:FullSyncIntervalMinutes); defaults to 10.
     /// </summary>
-    private int _cycleCount;
-
-    /// <summary>
-    /// How many sync cycles between full resyncs (e.g. 60 cycles × 10 s = 10 min).
-    /// Read from appsettings.json; defaults to 60.
-    /// </summary>
-    private readonly int _fullSyncIntervalCycles;
+    private readonly int _fullSyncIntervalMinutes;
 
     public SyncService(
         OpenEdgeRepository openEdgeRepo,
@@ -33,18 +31,34 @@ public class SyncService
         _openEdgeRepo = openEdgeRepo;
         _mySqlRepo = mySqlRepo;
         _logger = logger;
-        _fullSyncIntervalCycles = configuration.GetValue<int>("Sync:FullSyncIntervalCycles", 60);
+        _fullSyncIntervalMinutes = configuration.GetValue<int>("Sync:FullSyncIntervalMinutes", 10);
     }
 
     public async Task SyncIdPrintsAsync()
     {
-        _cycleCount++;
-
         // Determine whether this is a full or incremental sync.
+        // FULL runs when the persisted last-full-sync timestamp is missing
+        // or older than Sync:FullSyncIntervalMinutes. Restarting the service
+        // does NOT by itself force a full sync.
         int? maxBatchNo = null;                     // null = full sync
         bool isFullSync = true;
 
-        if (_cycleCount > 1 && _cycleCount % _fullSyncIntervalCycles != 0)
+        DateTime? lastFullSyncUtc = null;
+        try
+        {
+            lastFullSyncUtc = await _mySqlRepo.GetLastFullSyncUtcAsync();
+        }
+        catch (Exception ex)
+        {
+            // If state can't be read (e.g. MySQL briefly down), a full sync
+            // is the safe default — it will repopulate everything.
+            _logger.LogWarning(ex,
+                "Could not read last full-sync state from MySQL; falling back to FULL sync.");
+        }
+
+        if (lastFullSyncUtc.HasValue &&
+            (_fullSyncIntervalMinutes <= 0 ||
+             DateTime.UtcNow - lastFullSyncUtc.Value < TimeSpan.FromMinutes(_fullSyncIntervalMinutes)))
         {
             // Incremental: only pull batches newer than what we already have.
             maxBatchNo = await _mySqlRepo.GetMaxBatchNoAsync();
@@ -66,6 +80,8 @@ public class SyncService
             if (records.Count == 0)
             {
                 _logger.LogInformation("id-print sync complete [{Mode}]. No new records found.", mode);
+                if (isFullSync)
+                    await PersistLastFullSyncAsync();
                 return;
             }
 
@@ -90,10 +106,33 @@ public class SyncService
             _logger.LogInformation(
                 "id-print sync complete [{Mode}]. {Synced} synced, {Failed} failed (out of {Total}).",
                 mode, synced, failed, records.Count);
+
+            if (isFullSync)
+                await PersistLastFullSyncAsync();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "id-print sync failed [{Mode}].", mode);
+        }
+    }
+
+    /// <summary>
+    /// Records the completion time of a FULL sync in MySQL so that restarts
+    /// (or a failed state read) do not force another full sync before the
+    /// configured interval elapses. If persisting fails, the next cycle will
+    /// simply run FULL again — the safe default.
+    /// </summary>
+    private async Task PersistLastFullSyncAsync()
+    {
+        try
+        {
+            await RetryAsync(
+                () => _mySqlRepo.SetLastFullSyncUtcAsync(DateTime.UtcNow),
+                "Persist last full-sync timestamp");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not persist last full-sync timestamp; next cycle will run FULL again.");
         }
     }
 

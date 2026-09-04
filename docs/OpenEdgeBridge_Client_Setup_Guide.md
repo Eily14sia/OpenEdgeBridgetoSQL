@@ -1,7 +1,7 @@
 # OpenEdge Bridge — Client-Side Setup Guide
 
-**Version:** 1.0
-**Date:** August 7, 2026
+**Version:** 1.2
+**Date:** September 4, 2026
 **Audience:** Client IT / personnel deploying the ID-printing system on their Windows PC.
 
 ---
@@ -176,11 +176,18 @@ CREATE TABLE IF NOT EXISTS id_print (
     printed        VARCHAR(3)    NULL        COMMENT 'yes / no (matches OpenEdge LOGICAL FORMAT)',
     printed_dt     DATE          NULL,
     printed_tm     VARCHAR(35)   NULL,
-    id_type        INT           NULL        COMMENT '1 = for RTC, 2 = senior',
+    tran_type      INT           NULL        COMMENT '1 = for RTC, 2 = senior',
     image_data     LONGBLOB      NULL,
+    id_code        INT           NULL,
+    sfx            VARCHAR(15)   NULL,
+    photo          LONGBLOB      NULL,
+    gender         INT           NULL        COMMENT '1 = Female, 2 = Male',
+    date_issued    DATE          NULL,
+    id_no          INT           NULL,
+    year_applied   INT           NULL,
+    control_no     INT           NULL,
     signature_data LONGBLOB      NULL        COMMENT 'Signature image; written by Entrust Instant ID (MySQL only)',
     qr_data        LONGBLOB      NULL        COMMENT 'QR code image; written by Entrust Instant ID (MySQL only)',
-    id_code        INT           NULL,
     print_count    INT           NULL        COMMENT 'Incremented by Instant ID; triggers printed=yes back-sync',
     PRIMARY KEY (id),
     UNIQUE INDEX idx_app_no (app_no)
@@ -191,6 +198,24 @@ CREATE TABLE IF NOT EXISTS id_print (
 
 5. Click **Go**.
 6. Verify: in the left panel, expand `instantid_bridge` → you should see the `id_print` table.
+
+> 🔄 **Updating an existing installation (already have `id_print`)?** Run this instead of the CREATE TABLE above, then click **Go**:
+>
+> ```sql
+> ALTER TABLE id_print
+>   CHANGE COLUMN id_type tran_type INT NULL COMMENT '1 = for RTC, 2 = senior',
+>   ADD COLUMN sfx          VARCHAR(15) NULL AFTER id_code,
+>   ADD COLUMN photo        LONGBLOB    NULL AFTER sfx,
+>   ADD COLUMN gender       INT         NULL COMMENT '1 = Female, 2 = Male' AFTER photo,
+>   ADD COLUMN date_issued  DATE        NULL AFTER gender,
+>   ADD COLUMN id_no        INT         NULL AFTER date_issued,
+>   ADD COLUMN year_applied INT         NULL AFTER id_no,
+>   ADD COLUMN control_no   INT         NULL AFTER year_applied,
+>   ADD COLUMN signature_data LONGBLOB  NULL AFTER control_no,
+>   ADD COLUMN qr_data        LONGBLOB  NULL AFTER signature_data;
+> ```
+>
+> (If you already had `signature_data` and `qr_data`, just run the `CHANGE COLUMN id_type` line and the first seven `ADD COLUMN` lines.)
 
 > ✅ **Done when:** `instantid_bridge` database and `id_print` table appear in phpMyAdmin.
 
@@ -232,7 +257,8 @@ CREATE TABLE IF NOT EXISTS id_print (
     "MySql": "Server=127.0.0.1;Database=instantid_bridge;Uid=root;Pwd=YOUR_MYSQL_PASSWORD;"
   },
   "Sync": {
-    "IntervalSeconds": 10
+    "IntervalSeconds": 10,
+    "FullSyncIntervalMinutes": 0
   }
 }
 ```
@@ -242,6 +268,7 @@ CREATE TABLE IF NOT EXISTS id_print (
 | `OpenEdge` / `OpenEdgeRead` | `DSN` must be **exactly** the DSN name from Step 2 (`OpenEdgeInstantID`); `Uid`/`Pwd` are the OpenEdge credentials from the provider |
 | `MySql` | `Server=127.0.0.1` (your local XAMPP); `Uid=root`; `Pwd` = the MySQL password you set in Step 3 |
 | `Sync:IntervalSeconds` | How often the bridge checks for new data (10 = every 10 seconds; 10–30 is recommended) |
+| `Sync:FullSyncIntervalMinutes` | Keep at **`0`**. The bridge then copies everything once when it first runs, and afterwards only picks up **new batches** — every 10 seconds, forever, even after reboots. Do not change this unless the provider tells you to |
 
 3. Save the file.
 
@@ -276,6 +303,19 @@ Get-Service OpenEdgeBridge
 4. **Confirm data is syncing:** open phpMyAdmin → `instantid_bridge` → `id_print` → **Browse**. After a few seconds, rows should appear that match the records in OpenEdge.
 
 > ✅ **Done when:** Service status = **Running**, and rows appear in `id_print` automatically.
+
+---
+
+## How the Sync Works (Plain English)
+
+This is what the bridge does behind the scenes — you normally never have to think about it:
+
+1. **First time it runs**, it copies **everything** from the OpenEdge `id-print` table into your local MySQL (`id_print`). This can take a few minutes if there are many records — that is normal.
+2. **After that**, every 10 seconds it only asks OpenEdge for **new batches** (new groups of applications) and copies just those. Existing rows are not re-copied.
+3. The bridge remembers this in a small bookkeeping table (`sync_state`) inside MySQL — so **restarting the PC or the service never causes another full copy**. It picks up right where it left off.
+4. Separately, it checks every 10 seconds whether Entrust Instant ID has printed anything (`print_count`), and marks those records as `printed = yes` back in OpenEdge.
+
+> 💡 **Expect this once:** if you ever upgrade the bridge from an older version, the first start after the upgrade does one full copy again (to create the bookkeeping table), then returns to new-batches-only.
 
 ---
 
@@ -314,6 +354,7 @@ Get-Service OpenEdgeBridge          # check status
 | Duplicate rows in MySQL | Missing UNIQUE index on `app_no` | Run: `ALTER TABLE id_print ADD UNIQUE INDEX idx_app_no (app_no);` |
 | Entrust can't connect to MySQL | MySQL not started, or wrong credentials in Entrust | Check XAMPP (MySQL green); re-check Entrust host `localhost`, port `3306`, database `instantid_bridge` |
 | `printed` never becomes `yes` in OpenEdge | Entrust isn't incrementing `print_count` | Check Entrust is configured to the `id_print` table and is incrementing `print_count` after printing |
+| Bridge keeps copying all records on every start | MySQL unreachable at startup, or `sync_state` table missing | The bridge falls back to a full copy when it can't read its state. Check XAMPP MySQL is **green** and that a `sync_state` table exists in `instantid_bridge` (the bridge creates it automatically after the first successful run) |
 | Bridge can't reach remote OpenEdge | Network/firewall blocking, or wrong host/port | Verify you can ping the host and the port is reachable; confirm details with the provider |
 
 ---
@@ -324,7 +365,8 @@ Get-Service OpenEdgeBridge          # check status
 - [ ] System DSN `OpenEdgeInstantID` created and **Test Connect** succeeds
 - [ ] XAMPP installed, MySQL **running**, `root` password set
 - [ ] `instantid_bridge` database created
-- [ ] `id_print` table created (with `signature_data`, `qr_data`, `print_count`, and UNIQUE `app_no`)
+- [ ] `id_print` table created (with `tran_type`, `sfx`, `photo`, `gender`, `date_issued`, `id_no`, `year_applied`, `control_no`, `signature_data`, `qr_data`, `print_count`, and UNIQUE `app_no`)
+- [ ] `sync_state` table exists in MySQL (auto-created by the bridge after the first run — verify in phpMyAdmin)
 - [ ] `mysql-connector-j-8.0.33.jar` placed in Entrust's `lib/` folder
 - [ ] Entrust configured → `localhost:3306` / `instantid_bridge` / `id_print`
 - [ ] `publish/` folder copied to `C:\OpenEdgeBridge\`

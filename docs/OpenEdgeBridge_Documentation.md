@@ -4,45 +4,45 @@
 
 ## Sample INSERT Data
 
-### MySQL — `id_print` (10 records)
+### MySQL — `id_print` (11 records)
 
 ```sql
-INSERT INTO id_print (batch_no, batch_date, app_no, dob, cp_no, fullname, hcp_fullname, address, hcp_cpno, lname, fname, mname, spa_docno, page_no, book_no, series_no, spa_atty, spa_dt_issue, printed, printed_dt, printed_tm, id_type, id_code, print_count)
+INSERT INTO id_print (batch_no, batch_date, app_no, dob, cp_no, fullname, hcp_fullname, address, hcp_cpno, lname, fname, mname, spa_docno, page_no, book_no, series_no, spa_atty, spa_dt_issue, printed, printed_dt, printed_tm, tran_type, id_code, sfx, photo, gender, date_issued, id_no, year_applied, control_no, print_count)
 VALUES
-(1, '2026-01-15', 1001, '1990-05-20', 'CP-001', 'Juan Dela Cruz', 'Dr. Maria Santos', '123 Rizal St, Manila', 'HCP-001', 'Dela Cruz', 'Juan', 'Santos', 'SPA-001', 'P001', 'BK001', 'SR001', 'Atty. Reyes', '2025-12-01', 'no', NULL, NULL, 1, 5001, 0),
-(1, '2026-01-15', 1002, '1985-08-12', 'CP-002', 'Maria Clara Reyes', 'Dr. Jose Rizal', '456 Mabini St, Quezon City', 'HCP-002', 'Reyes', 'Maria', 'Clara', 'SPA-002', 'P002', 'BK001', 'SR002', 'Atty. Cruz', '2025-12-02', 'no', NULL, NULL, 1, 5002, 0),
-(1, '2026-01-16', 1003, '1992-03-25', 'CP-003', 'Pedro Penduko', 'Dr. Ana Lopez', '789 Bonifacio Ave, Cebu', 'HCP-003', 'Penduko', 'Pedro', 'Garcia', 'SPA-003', 'P003', 'BK002', 'SR003', 'Atty. Santos', '2025-12-03', 'no', NULL, NULL, 2, 5003, 1),
-(2, '2026-02-10', 1004, '1988-11-30', 'CP-004', 'Ana Patricia Gomez', 'Dr. Luis Torres', '321 Aguinaldo Rd, Davao', 'HCP-004', 'Gomez', 'Ana', 'Patricia', 'SPA-004', 'P004', 'BK002', 'SR004', 'Atty. Reyes', '2025-12-10', 'yes', '2026-02-11', '10:30:00', 1, 5004, 1),
-(2, '2026-02-10', 1005, '1995-07-14', 'CP-005', 'Carlos Miguel Tan', 'Dr. Elena Villanueva', '654 Luna St, Makati', 'HCP-005', 'Tan', 'Carlos', 'Miguel', 'SPA-005', 'P005', 'BK003', 'SR005', 'Atty. Dela Rosa', '2025-12-15', 'no', NULL, NULL, 3, 5005, 2),
-(2, '2026-02-11', 1006, '1982-01-08', 'CP-006', 'Sofia Isabelle Lim', 'Dr. Ramon Bautista', '987 Silang Ave, Pasig', 'HCP-006', 'Lim', 'Sofia', 'Isabelle', 'SPA-006', 'P006', 'BK003', 'SR006', 'Atty. Mercado', '2025-12-20', 'no', NULL, NULL, 1, 5006, 0),
-(3, '2026-03-05', 1007, '1998-09-18', 'CP-007', 'Rafael Antonio Uy', 'Dr. Patricia Ong', '159 Roxas Blvd, Paranaque', 'HCP-007', 'Uy', 'Rafael', 'Antonio', 'SPA-007', 'P007', 'BK004', 'SR007', 'Atty. Garcia', '2026-01-05', 'yes', '2026-03-06', '14:15:00', 2, 5007, 1),
-(3, '2026-03-05', 1008, '1991-12-03', 'CP-008', 'Gabriela Nicole Sy', 'Dr. Fernando Aquino', '753 Quezon Blvd, Taguig', 'HCP-008', 'Sy', 'Gabriela', 'Nicole', 'SPA-008', 'P008', 'BK004', 'SR008', 'Atty. Ramos', '2026-01-10', 'no', NULL, NULL, 1, 5008, 0),
-(3, '2026-03-06', 1009, '1987-04-22', 'CP-009', 'Miguel Alfonso Co', 'Dr. Teresa Javier', '246 Osmena St, Baguio', 'HCP-009', 'Co', 'Miguel', 'Alfonso', 'SPA-009', 'P009', 'BK005', 'SR009', 'Atty. Villar', '2026-01-15', 'no', NULL, NULL, 3, 5009, 3),
-(4, '2026-04-20', 1010, '1993-06-11', 'CP-010', 'Isabella Marie Chua', 'Dr. Roberto Domingo', '135 Kalayaan Ave, Pampanga', 'HCP-010', 'Chua', 'Isabella', 'Marie', 'SPA-010', 'P010', 'BK005', 'SR010', 'Atty. Pineda', '2026-02-01', 'no', NULL, NULL, 1, 5010, 0),
-(4, '2026-04-20', 1011, '1980-10-05', 'CP-011', 'Antonio Luis Pangilinan', 'Dr. Carmen Salazar', '864 EDSA, Mandaluyong', 'HCP-011', 'Pangilinan', 'Antonio', 'Luis', 'SPA-011', 'P011', 'BK006', 'SR011', 'Atty. Hernandez', '2026-02-10', 'yes', '2026-04-21', '09:00:00', 2, 5011, 2);
+(1, '2026-01-15', 1001, '1990-05-20', 'CP-001', 'Juan Dela Cruz', 'Dr. Maria Santos', '123 Rizal St, Manila', 'HCP-001', 'Dela Cruz', 'Juan', 'Santos', 'SPA-001', 'P001', 'BK001', 'SR001', 'Atty. Reyes', '2025-12-01', 'no', NULL, NULL, 1, 5001, '', NULL, 1, '2026-01-15', 10001, 2026, 1, 0),
+(1, '2026-01-15', 1002, '1985-08-12', 'CP-002', 'Maria Clara Reyes', 'Dr. Jose Rizal', '456 Mabini St, Quezon City', 'HCP-002', 'Reyes', 'Maria', 'Clara', 'SPA-002', 'P002', 'BK001', 'SR002', 'Atty. Cruz', '2025-12-02', 'no', NULL, NULL, 1, 5002, '', NULL, 2, '2026-01-15', 10002, 2026, 2, 0),
+(1, '2026-01-16', 1003, '1992-03-25', 'CP-003', 'Pedro Penduko', 'Dr. Ana Lopez', '789 Bonifacio Ave, Cebu', 'HCP-003', 'Penduko', 'Pedro', 'Garcia', 'SPA-003', 'P003', 'BK002', 'SR003', 'Atty. Santos', '2025-12-03', 'no', NULL, NULL, 2, 5003, 'JR', NULL, 1, '2026-01-16', 10003, 2026, 3, 1),
+(2, '2026-02-10', 1004, '1988-11-30', 'CP-004', 'Ana Patricia Gomez', 'Dr. Luis Torres', '321 Aguinaldo Rd, Davao', 'HCP-004', 'Gomez', 'Ana', 'Patricia', 'SPA-004', 'P004', 'BK002', 'SR004', 'Atty. Reyes', '2025-12-10', 'yes', '2026-02-11', '10:30:00', 1, 5004, '', NULL, 2, '2026-02-10', 10004, 2026, 4, 1),
+(2, '2026-02-10', 1005, '1995-07-14', 'CP-005', 'Carlos Miguel Tan', 'Dr. Elena Villanueva', '654 Luna St, Makati', 'HCP-005', 'Tan', 'Carlos', 'Miguel', 'SPA-005', 'P005', 'BK003', 'SR005', 'Atty. Dela Rosa', '2025-12-15', 'no', NULL, NULL, 3, 5005, '', NULL, 1, '2026-02-10', 10005, 2026, 5, 2),
+(2, '2026-02-11', 1006, '1982-01-08', 'CP-006', 'Sofia Isabelle Lim', 'Dr. Ramon Bautista', '987 Silang Ave, Pasig', 'HCP-006', 'Lim', 'Sofia', 'Isabelle', 'SPA-006', 'P006', 'BK003', 'SR006', 'Atty. Mercado', '2025-12-20', 'no', NULL, NULL, 1, 5006, '', NULL, 2, '2026-02-11', 10006, 2026, 6, 0),
+(3, '2026-03-05', 1007, '1998-09-18', 'CP-007', 'Rafael Antonio Uy', 'Dr. Patricia Ong', '159 Roxas Blvd, Paranaque', 'HCP-007', 'Uy', 'Rafael', 'Antonio', 'SPA-007', 'P007', 'BK004', 'SR007', 'Atty. Garcia', '2026-01-05', 'yes', '2026-03-06', '14:15:00', 2, 5007, '', NULL, 1, '2026-03-05', 10007, 2026, 7, 1),
+(3, '2026-03-05', 1008, '1991-12-03', 'CP-008', 'Gabriela Nicole Sy', 'Dr. Fernando Aquino', '753 Quezon Blvd, Taguig', 'HCP-008', 'Sy', 'Gabriela', 'Nicole', 'SPA-008', 'P008', 'BK004', 'SR008', 'Atty. Ramos', '2026-01-10', 'no', NULL, NULL, 1, 5008, '', NULL, 2, '2026-03-05', 10008, 2026, 8, 0),
+(3, '2026-03-06', 1009, '1987-04-22', 'CP-009', 'Miguel Alfonso Co', 'Dr. Teresa Javier', '246 Osmena St, Baguio', 'HCP-009', 'Co', 'Miguel', 'Alfonso', 'SPA-009', 'P009', 'BK005', 'SR009', 'Atty. Villar', '2026-01-15', 'no', NULL, NULL, 3, 5009, 'III', NULL, 1, '2026-03-06', 10009, 2026, 9, 3),
+(4, '2026-04-20', 1010, '1993-06-11', 'CP-010', 'Isabella Marie Chua', 'Dr. Roberto Domingo', '135 Kalayaan Ave, Pampanga', 'HCP-010', 'Chua', 'Isabella', 'Marie', 'SPA-010', 'P010', 'BK005', 'SR010', 'Atty. Pineda', '2026-02-01', 'no', NULL, NULL, 1, 5010, '', NULL, 2, '2026-04-20', 10010, 2026, 10, 0),
+(4, '2026-04-20', 1011, '1980-10-05', 'CP-011', 'Antonio Luis Pangilinan', 'Dr. Carmen Salazar', '864 EDSA, Mandaluyong', 'HCP-011', 'Pangilinan', 'Antonio', 'Luis', 'SPA-011', 'P011', 'BK006', 'SR011', 'Atty. Hernandez', '2026-02-10', 'yes', '2026-04-21', '09:00:00', 2, 5011, '', NULL, 1, '2026-04-20', 10011, 2026, 11, 2);
 ```
 
 ### OpenEdge (Progress) — `pub."id-print"` (11 records)
 
 ```sql
-INSERT INTO pub."id-print" ("batch-no", "batch-date", "app-no", "dob", "cp-no", "fullname", "hcp-fullname", "address", "hcp-cpno", "lname", "fname", "mname", "spa-docno", "page-no", "book-no", "series-no", "spa-atty", "spa-dt-issue", "printed", "printed-dt", "printed-tm", "id-type", "id-code", "print-count")
+INSERT INTO pub."id-print" ("batch-no", "batch-date", "app-no", "dob", "cp-no", "fullname", "hcp-fullname", "address", "hcp-cpno", "lname", "fname", "mname", "spa-docno", "page-no", "book-no", "series-no", "spa-atty", "spa-dt-issue", "printed", "printed-dt", "printed-tm", "tran-type", "id-code", "sfx", "photo", "gender", "date-issued", "id-no", "year-applied", "control-no")
 VALUES
-(1, '2026-01-15', 1001, '1990-05-20', 'CP-001', 'Juan Dela Cruz', 'Dr. Maria Santos', '123 Rizal St, Manila', 'HCP-001', 'Dela Cruz', 'Juan', 'Santos', 'SPA-001', 'P001', 'BK001', 'SR001', 'Atty. Reyes', '2025-12-01', 0, NULL, NULL, 1, 5001, 0),
-(1, '2026-01-15', 1002, '1985-08-12', 'CP-002', 'Maria Clara Reyes', 'Dr. Jose Rizal', '456 Mabini St, Quezon City', 'HCP-002', 'Reyes', 'Maria', 'Clara', 'SPA-002', 'P002', 'BK001', 'SR002', 'Atty. Cruz', '2025-12-02', 0, NULL, NULL, 1, 5002, 0),
-(1, '2026-01-16', 1003, '1992-03-25', 'CP-003', 'Pedro Penduko', 'Dr. Ana Lopez', '789 Bonifacio Ave, Cebu', 'HCP-003', 'Penduko', 'Pedro', 'Garcia', 'SPA-003', 'P003', 'BK002', 'SR003', 'Atty. Santos', '2025-12-03', 0, NULL, NULL, 2, 5003, 1),
-(2, '2026-02-10', 1004, '1988-11-30', 'CP-004', 'Ana Patricia Gomez', 'Dr. Luis Torres', '321 Aguinaldo Rd, Davao', 'HCP-004', 'Gomez', 'Ana', 'Patricia', 'SPA-004', 'P004', 'BK002', 'SR004', 'Atty. Reyes', '2025-12-10', 1, '2026-02-11', '10:30:00', 1, 5004, 1),
-(2, '2026-02-10', 1005, '1995-07-14', 'CP-005', 'Carlos Miguel Tan', 'Dr. Elena Villanueva', '654 Luna St, Makati', 'HCP-005', 'Tan', 'Carlos', 'Miguel', 'SPA-005', 'P005', 'BK003', 'SR005', 'Atty. Dela Rosa', '2025-12-15', 0, NULL, NULL, 3, 5005, 2),
-(2, '2026-02-11', 1006, '1982-01-08', 'CP-006', 'Sofia Isabelle Lim', 'Dr. Ramon Bautista', '987 Silang Ave, Pasig', 'HCP-006', 'Lim', 'Sofia', 'Isabelle', 'SPA-006', 'P006', 'BK003', 'SR006', 'Atty. Mercado', '2025-12-20', 0, NULL, NULL, 1, 5006, 0),
-(3, '2026-03-05', 1007, '1998-09-18', 'CP-007', 'Rafael Antonio Uy', 'Dr. Patricia Ong', '159 Roxas Blvd, Paranaque', 'HCP-007', 'Uy', 'Rafael', 'Antonio', 'SPA-007', 'P007', 'BK004', 'SR007', 'Atty. Garcia', '2026-01-05', 1, '2026-03-06', '14:15:00', 2, 5007, 1),
-(3, '2026-03-05', 1008, '1991-12-03', 'CP-008', 'Gabriela Nicole Sy', 'Dr. Fernando Aquino', '753 Quezon Blvd, Taguig', 'HCP-008', 'Sy', 'Gabriela', 'Nicole', 'SPA-008', 'P008', 'BK004', 'SR008', 'Atty. Ramos', '2026-01-10', 0, NULL, NULL, 1, 5008, 0),
-(3, '2026-03-06', 1009, '1987-04-22', 'CP-009', 'Miguel Alfonso Co', 'Dr. Teresa Javier', '246 Osmena St, Baguio', 'HCP-009', 'Co', 'Miguel', 'Alfonso', 'SPA-009', 'P009', 'BK005', 'SR009', 'Atty. Villar', '2026-01-15', 0, NULL, NULL, 3, 5009, 3),
-(4, '2026-04-20', 1010, '1993-06-11', 'CP-010', 'Isabella Marie Chua', 'Dr. Roberto Domingo', '135 Kalayaan Ave, Pampanga', 'HCP-010', 'Chua', 'Isabella', 'Marie', 'SPA-010', 'P010', 'BK005', 'SR010', 'Atty. Pineda', '2026-02-01', 0, NULL, NULL, 1, 5010, 0),
-(4, '2026-04-20', 1011, '1980-10-05', 'CP-011', 'Antonio Luis Pangilinan', 'Dr. Carmen Salazar', '864 EDSA, Mandaluyong', 'HCP-011', 'Pangilinan', 'Antonio', 'Luis', 'SPA-011', 'P011', 'BK006', 'SR011', 'Atty. Hernandez', '2026-02-10', 1, '2026-04-21', '09:00:00', 2, 5011, 2);
+(1, '2026-01-15', 1001, '1990-05-20', 'CP-001', 'Juan Dela Cruz', 'Dr. Maria Santos', '123 Rizal St, Manila', 'HCP-001', 'Dela Cruz', 'Juan', 'Santos', 'SPA-001', 'P001', 'BK001', 'SR001', 'Atty. Reyes', '2025-12-01', 0, NULL, NULL, 1, 5001, '', NULL, 1, '2026-01-15', 10001, 2026, 1),
+(1, '2026-01-15', 1002, '1985-08-12', 'CP-002', 'Maria Clara Reyes', 'Dr. Jose Rizal', '456 Mabini St, Quezon City', 'HCP-002', 'Reyes', 'Maria', 'Clara', 'SPA-002', 'P002', 'BK001', 'SR002', 'Atty. Cruz', '2025-12-02', 0, NULL, NULL, 1, 5002, '', NULL, 2, '2026-01-15', 10002, 2026, 2),
+(1, '2026-01-16', 1003, '1992-03-25', 'CP-003', 'Pedro Penduko', 'Dr. Ana Lopez', '789 Bonifacio Ave, Cebu', 'HCP-003', 'Penduko', 'Pedro', 'Garcia', 'SPA-003', 'P003', 'BK002', 'SR003', 'Atty. Santos', '2025-12-03', 0, NULL, NULL, 2, 5003, 'JR', NULL, 1, '2026-01-16', 10003, 2026, 3),
+(2, '2026-02-10', 1004, '1988-11-30', 'CP-004', 'Ana Patricia Gomez', 'Dr. Luis Torres', '321 Aguinaldo Rd, Davao', 'HCP-004', 'Gomez', 'Ana', 'Patricia', 'SPA-004', 'P004', 'BK002', 'SR004', 'Atty. Reyes', '2025-12-10', 1, '2026-02-11', '10:30:00', 1, 5004, '', NULL, 2, '2026-02-10', 10004, 2026, 4),
+(2, '2026-02-10', 1005, '1995-07-14', 'CP-005', 'Carlos Miguel Tan', 'Dr. Elena Villanueva', '654 Luna St, Makati', 'HCP-005', 'Tan', 'Carlos', 'Miguel', 'SPA-005', 'P005', 'BK003', 'SR005', 'Atty. Dela Rosa', '2025-12-15', 0, NULL, NULL, 3, 5005, '', NULL, 1, '2026-02-10', 10005, 2026, 5),
+(2, '2026-02-11', 1006, '1982-01-08', 'CP-006', 'Sofia Isabelle Lim', 'Dr. Ramon Bautista', '987 Silang Ave, Pasig', 'HCP-006', 'Lim', 'Sofia', 'Isabelle', 'SPA-006', 'P006', 'BK003', 'SR006', 'Atty. Mercado', '2025-12-20', 0, NULL, NULL, 1, 5006, '', NULL, 2, '2026-02-11', 10006, 2026, 6),
+(3, '2026-03-05', 1007, '1998-09-18', 'CP-007', 'Rafael Antonio Uy', 'Dr. Patricia Ong', '159 Roxas Blvd, Paranaque', 'HCP-007', 'Uy', 'Rafael', 'Antonio', 'SPA-007', 'P007', 'BK004', 'SR007', 'Atty. Garcia', '2026-01-05', 1, '2026-03-06', '14:15:00', 2, 5007, '', NULL, 1, '2026-03-05', 10007, 2026, 7),
+(3, '2026-03-05', 1008, '1991-12-03', 'CP-008', 'Gabriela Nicole Sy', 'Dr. Fernando Aquino', '753 Quezon Blvd, Taguig', 'HCP-008', 'Sy', 'Gabriela', 'Nicole', 'SPA-008', 'P008', 'BK004', 'SR008', 'Atty. Ramos', '2026-01-10', 0, NULL, NULL, 1, 5008, '', NULL, 2, '2026-03-05', 10008, 2026, 8),
+(3, '2026-03-06', 1009, '1987-04-22', 'CP-009', 'Miguel Alfonso Co', 'Dr. Teresa Javier', '246 Osmena St, Baguio', 'HCP-009', 'Co', 'Miguel', 'Alfonso', 'SPA-009', 'P009', 'BK005', 'SR009', 'Atty. Villar', '2026-01-15', 0, NULL, NULL, 3, 5009, 'III', NULL, 1, '2026-03-06', 10009, 2026, 9),
+(4, '2026-04-20', 1010, '1993-06-11', 'CP-010', 'Isabella Marie Chua', 'Dr. Roberto Domingo', '135 Kalayaan Ave, Pampanga', 'HCP-010', 'Chua', 'Isabella', 'Marie', 'SPA-010', 'P010', 'BK005', 'SR010', 'Atty. Pineda', '2026-02-01', 0, NULL, NULL, 1, 5010, '', NULL, 2, '2026-04-20', 10010, 2026, 10),
+(4, '2026-04-20', 1011, '1980-10-05', 'CP-011', 'Antonio Luis Pangilinan', 'Dr. Carmen Salazar', '864 EDSA, Mandaluyong', 'HCP-011', 'Pangilinan', 'Antonio', 'Luis', 'SPA-011', 'P011', 'BK006', 'SR011', 'Atty. Hernandez', '2026-02-10', 1, '2026-04-21', '09:00:00', 2, 5011, '', NULL, 1, '2026-04-20', 10011, 2026, 11);
 ```
 
 
-**Version:** 1.0  
-**Date:** July 23, 2026  
+**Version:** 1.2  
+**Date:** September 4, 2026  
 **Purpose:** Sync bridge between Progress OpenEdge and MySQL for Entrust Instant ID card printing. Reads `"id-print"` from OpenEdge and mirrors it to MySQL's `id_print` table.
 
 ---
@@ -84,15 +84,29 @@ OpenEdge "id-print" ──► C# Service ──► MySQL id_print table
        (read)               (sync loop)         (upsert)
 ```
 
-All 24 fields from the `id-print` table are synced, including:
+All 31 fields from the `id-print` table are synced, including:
 - `batch-no`, `batch-date`, `app-no`, `dob`
 - `cp-no`, `fullname`, `hcp-fullname`, `address`, `hcp-cpno`
 - `lname`, `fname`, `mname`
 - `spa-docno`, `page-no`, `book-no`, `series-no`, `spa-atty`, `spa-dt-issue`
 - `printed`, `printed-dt`, `printed-tm`
-- `id-type`, `image-data`, `id-code`
+- `tran-type`, `image-data`, `id-code`, `sfx`, `photo`
+- `gender`, `date-issued`, `id-no`, `year-applied`, `control-no`
 
-Runs every N seconds (configurable in `appsettings.json`). Uses **INSERT ON DUPLICATE KEY UPDATE** to avoid duplicates. `print_count` is only inserted on first sync; subsequent updates do NOT overwrite it (Instant ID manages `print_count`).
+Runs every N seconds (configurable in `appsettings.json`). Uses **check-then-update** upserts (SELECT by `app_no`, then UPDATE or INSERT) to avoid duplicates. `print_count` is only inserted on first sync; subsequent updates do NOT overwrite it (Instant ID manages `print_count`).
+
+#### Full vs. Incremental Sync
+
+The bridge has two read modes, decided automatically on every cycle:
+
+| Mode | Trigger | What it reads from OpenEdge |
+|------|---------|------------------------------|
+| **FULL** | No `last_full_sync_utc` recorded yet (first run, or fresh MySQL) | All rows in `pub."id-print"` — seeds/refreshes the entire MySQL table |
+| **INCREMENTAL** | A full sync has already been recorded | Only rows with `batch-no` greater than the highest `batch_no` already in MySQL |
+
+OpenEdge `id-print` records are **write-once** — new data arrives only as new batches; existing rows are never edited. Therefore, with the default `Sync:FullSyncIntervalMinutes = 0`, the full sync runs **once** (the initial seed) and every later cycle is incremental. Restarting the service or rebooting the PC does **not** cause another full sync — the timestamp is persisted in MySQL's `sync_state` table (see [Database Tables](#database-tables)).
+
+If `Sync:FullSyncIntervalMinutes` is set to a positive value (e.g., `60`), a full sync also runs when that many minutes have elapsed since the last successful full sync — useful only if OpenEdge rows ever start getting edited in place.
 
 > **Note:** `signature_data` and `qr_data` are **not** part of this sync — they are MySQL-only columns populated by Entrust Instant ID and never touched by the bridge (see [Database Tables](#database-tables)).
 
@@ -341,7 +355,7 @@ ADD FIELD "printed-tm" OF "id-print" AS character
   MAX-WIDTH 70
   ORDER 210
 
-ADD FIELD "id-type" OF "id-print" AS integer 
+ADD FIELD "tran-type" OF "id-print" AS integer 
   DESCRIPTION "1 = for RTC, 2=senior"
   FORMAT "->,>>>,>>9"
   INITIAL "0"
@@ -363,11 +377,63 @@ ADD FIELD "id-code" OF "id-print" AS integer
   MAX-WIDTH 4
   ORDER 240
 
+ADD FIELD "sfx" OF "id-print" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  POSITION 26
+  MAX-WIDTH 30
+  ORDER 250
+
+ADD FIELD "photo" OF "id-print" AS blob 
+  FORMAT "x(8)"
+  INITIAL ?
+  POSITION 27
+  LOB-AREA "Schema Area"
+  LOB-BYTES 104857600
+  LOB-SIZE 100M
+  ORDER 260
+
+ADD FIELD "gender" OF "id-print" AS integer 
+  DESCRIPTION "1=Female, 2=Male"
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  POSITION 28
+  MAX-WIDTH 4
+  ORDER 270
+
+ADD FIELD "date-issued" OF "id-print" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  POSITION 29
+  MAX-WIDTH 4
+  ORDER 280
+
+ADD FIELD "id-no" OF "id-print" AS integer 
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  POSITION 30
+  MAX-WIDTH 4
+  ORDER 290
+
+ADD FIELD "year-applied" OF "id-print" AS integer 
+  FORMAT ">>>9999"
+  INITIAL "0"
+  POSITION 31
+  MAX-WIDTH 4
+  ORDER 300
+
+ADD FIELD "control-no" OF "id-print" AS integer 
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  POSITION 32
+  MAX-WIDTH 4
+  ORDER 310
+
 .
 PSC
 cpstream=ISO8859-1
 .
-0000003166
+0000004144
 ```
 
 Then, in **Proenv**, load the `.df` file into the database:
@@ -415,16 +481,24 @@ CREATE TABLE "id-print" (
     "printed"       BIT           NOT NULL DEFAULT 0,
     "printed-dt"    DATE          NULL,
     "printed-tm"    VARCHAR(35)   NOT NULL DEFAULT '',
-    "id-type"       INTEGER       NOT NULL DEFAULT 0,
+    "tran-type"     INTEGER       NOT NULL DEFAULT 0,
     "image-data"    VARBINARY(110) NULL,
-    "id-code"       INTEGER       NOT NULL DEFAULT 0
+    "id-code"       INTEGER       NOT NULL DEFAULT 0,
+    "sfx"           VARCHAR(15)   NOT NULL DEFAULT '',
+    "photo"         BLOB          NULL,
+    "gender"        INTEGER       NOT NULL DEFAULT 0,
+    "date-issued"   DATE          NULL,
+    "id-no"         INTEGER       NOT NULL DEFAULT 0,
+    "year-applied"  INTEGER       NOT NULL DEFAULT 0,
+    "control-no"    INTEGER       NOT NULL DEFAULT 0
 );
 ```
 
 > **Note:** OpenEdge requires double-quotes around field names containing hyphens (`-`).  
 > The schema resides in the `PUB` area (default).  
 > `BIT` represents the OpenEdge `LOGICAL` type (yes/no → 1/0).  
-> `VARBINARY(110)` stores the raw image binary data (MAX-WIDTH 110 from the schema).
+> `VARBINARY(110)` stores the raw image binary data (MAX-WIDTH 110 from the schema).  
+> `BLOB` stores the cardholder photo (LOB-SIZE 100M from the schema).
 
 #### MySQL — CREATE TABLE
 
@@ -452,11 +526,18 @@ CREATE TABLE IF NOT EXISTS id_print (
     printed        VARCHAR(3)    NULL        COMMENT 'yes / no (matches OpenEdge LOGICAL FORMAT)',
     printed_dt     DATE          NULL,
     printed_tm     VARCHAR(35)   NULL,
-    id_type        INT           NULL        COMMENT '1 = for RTC, 2 = senior',
+    tran_type      INT           NULL        COMMENT '1 = for RTC, 2 = senior',
     image_data     LONGBLOB      NULL,
+    id_code        INT           NULL,
+    sfx            VARCHAR(15)   NULL,
+    photo          LONGBLOB      NULL,
+    gender         INT           NULL        COMMENT '1 = Female, 2 = Male',
+    date_issued    DATE          NULL,
+    id_no          INT           NULL,
+    year_applied   INT           NULL,
+    control_no     INT           NULL,
     signature_data LONGBLOB      NULL        COMMENT 'Signature image; written by Entrust Instant ID (MySQL only, NOT synced from OpenEdge)',
     qr_data        LONGBLOB      NULL        COMMENT 'QR code image; written by Entrust Instant ID (MySQL only, NOT synced from OpenEdge)',
-    id_code        INT           NULL,
     print_count    INT           NULL        COMMENT 'Incremented by Instant ID; triggers printed=yes back-sync',
     PRIMARY KEY (id),
     UNIQUE INDEX idx_app_no (app_no)
@@ -465,16 +546,42 @@ CREATE TABLE IF NOT EXISTS id_print (
   COLLATE=utf8mb4_unicode_ci;
 ```
 
-> **Note:** `id` is an internal auto-increment primary key. `app_no` is the unique business key — the bridge uses it for deduplication (`ON DUPLICATE KEY UPDATE` fires when the same `app_no` is synced again).
+> **Note:** `id` is an internal auto-increment primary key. `app_no` is the unique business key — the bridge uses it for deduplication (it SELECTs by `app_no` first, then UPDATEs or INSERTs as needed).
 
 > **MySQL-only columns (`signature_data`, `qr_data`):** These store the cardholder's signature and QR-code images and are **MySQL only**. They do **not** exist in the OpenEdge `"id-print"` table and are **never read from or written back to OpenEdge**. Entrust Instant ID populates them directly in MySQL. The bridge deliberately leaves them untouched — it does not include them in its INSERT/UPDATE, so syncing from OpenEdge will never overwrite them.
 
 > **Already have the table?** If you created `id_print` before these columns existed, add them with:
 > ```sql
 > ALTER TABLE id_print
->   ADD COLUMN signature_data LONGBLOB NULL AFTER image_data,
->   ADD COLUMN qr_data        LONGBLOB NULL AFTER signature_data;
+>   CHANGE COLUMN id_type tran_type INT NULL COMMENT '1 = for RTC, 2 = senior',
+>   ADD COLUMN sfx          VARCHAR(15) NULL AFTER id_code,
+>   ADD COLUMN photo        LONGBLOB    NULL AFTER sfx,
+>   ADD COLUMN gender       INT         NULL COMMENT '1 = Female, 2 = Male' AFTER photo,
+>   ADD COLUMN date_issued  DATE        NULL AFTER gender,
+>   ADD COLUMN id_no        INT         NULL AFTER date_issued,
+>   ADD COLUMN year_applied INT         NULL AFTER id_no,
+>   ADD COLUMN control_no   INT         NULL AFTER year_applied,
+>   ADD COLUMN signature_data LONGBLOB  NULL AFTER control_no,
+>   ADD COLUMN qr_data        LONGBLOB  NULL AFTER signature_data;
 > ```
+>
+> > **Schema update (2026-09-03):** OpenEdge renamed `id-type` to `tran-type` and added `sfx`, `photo`, `gender`, `date-issued`, `id-no`, `year-applied`, and `control-no`. If your OpenEdge `"id-print"` table was created with the older `.df`, reload the updated `.df` (Step 0-E) or add the new fields with `ADD FIELD` in the Data Dictionary, then run the ALTER above on MySQL.
+
+### `sync_state` (bridge state table — MySQL only, auto-created)
+
+The bridge keeps its own bookkeeping in a tiny table called `sync_state`. **You do not need to create it manually** — the bridge runs `CREATE TABLE IF NOT EXISTS` on demand, so it appears in MySQL automatically after the first sync cycle.
+
+```sql
+CREATE TABLE IF NOT EXISTS sync_state (
+    state_key   VARCHAR(64)  NOT NULL PRIMARY KEY,
+    state_value VARCHAR(64)  NOT NULL,
+    updated_utc DATETIME     NOT NULL
+) ENGINE=InnoDB;
+```
+
+| Key | Meaning |
+|-----|---------|
+| `last_full_sync_utc` | UTC timestamp of the last successful FULL sync. Used to decide whether the next cycle can be INCREMENTAL. Survives restarts, so a reboot never forces a redundant full sync. |
 
 ### Column Comparison — Plain English
 
@@ -500,9 +607,16 @@ Think of each row as **one person's ID-card application folder**. The columns ar
 | `page-no` | `page_no` | **Page number** — which page in the record book this person is on |
 | `book-no` | `book_no` | **Book number** — which record book |
 | `series-no` | `series_no` | **Series number** — the serial number of the ID |
-| `id-type` | `id_type` | **Kind of ID** — `1` = regular (RTC), `2` = senior citizen |
+| `tran-type` | `tran_type` | **Kind of ID / transaction type** — `1` = regular (RTC), `2` = senior citizen |
 | `image-data` | `image_data` | **The person's photo** (picture file) |
 | `id-code` | `id_code` | **ID code** — the code number printed on the card |
+| `sfx` | `sfx` | **Name suffix** — e.g. Jr., Sr., III |
+| `photo` | `photo` | **Photo** — the cardholder's photograph (BLOB image) |
+| `gender` | `gender` | **Gender** — `1` = Female, `2` = Male |
+| `date-issued` | `date_issued` | **Date the ID card was issued** |
+| `id-no` | `id_no` | **ID number** — the person's ID number |
+| `year-applied` | `year_applied` | **Year the application was filed** (e.g. `2026`) |
+| `control-no` | `control_no` | **Control number** — application/control tracking number |
 | `printed` | `printed` | **Has it been printed yet?** — `yes` or `no` |
 | `printed-dt` | `printed_dt` | **Date it was printed** |
 | `printed-tm` | `printed_tm` | **Time it was printed** |
@@ -607,7 +721,8 @@ Copy the entire `publish/` folder to the target PC, e.g. `C:\OpenEdgeBridge\`.
     "MySql": "Server=localhost;Database=instantid_bridge;Uid=root;Pwd=your_mysql_password;"
   },
   "Sync": {
-    "IntervalSeconds": 10
+    "IntervalSeconds": 10,
+    "FullSyncIntervalMinutes": 0
   }
 }
 ```
@@ -617,6 +732,7 @@ Copy the entire `publish/` folder to the target PC, e.g. `C:\OpenEdgeBridge\`.
 | `OpenEdge` | ODBC DSN name, user, and password |
 | `MySql` | MySQL server, database, user, and password |
 | `Sync:IntervalSeconds` | How often the sync loop runs (default: 10s) |
+| `Sync:FullSyncIntervalMinutes` | Minutes between periodic FULL syncs. `0` = disabled (recommended; OpenEdge rows are write-once, so only the first run seeds). Positive value (e.g., `60`) = re-read the whole table that often, catching in-place edits if they ever happen |
 
 ### 7. Install as a Windows Service
 
@@ -676,10 +792,13 @@ sc delete OpenEdgeBridge
 | MySQL not accessible from Entrust | MySQL not running or wrong port | Check XAMPP Control Panel; MySQL must be **Started** |
 | OpenEdge SQL CREATE TABLE fails with "Invalid table name" | Hyphens in table/field names not quoted | Wrap names containing hyphens in double quotes: `"id-print"`, `"batch-no"` |
 | `image-data` field too small | VARBINARY length insufficient | The OpenEdge schema specifies MAX-WIDTH 110; adjust as needed |
+| Full sync on every start (log says `[FULL]`) | `sync_state` missing or MySQL unreachable at startup | The bridge auto-creates `sync_state`; after the first successful full sync it records a timestamp and later starts use `[INCREMENTAL]`. If MySQL is down at startup it falls back to FULL — that is safe and self-corrects once MySQL is reachable |
 
 ---
 
 ## Sync Interval Tuning
+
+### `IntervalSeconds` — how often the bridge checks for new batches
 
 The default sync interval is **10 seconds**. Adjust in `appsettings.json`:
 
@@ -692,6 +811,25 @@ The default sync interval is **10 seconds**. Adjust in `appsettings.json`:
 - **Lower** (e.g., 5s) = faster sync, more database load
 - **Higher** (e.g., 60s) = slower sync, less load
 - Recommended: 10–30 seconds for production
+
+The interval is an **idle pause between cycles** (work → wait → work), not a fixed wall-clock schedule. A slow sync simply delays the next check; cycles never overlap.
+
+### `FullSyncIntervalMinutes` — how often the whole table is re-read
+
+```json
+"Sync": {
+  "FullSyncIntervalMinutes": 0
+}
+```
+
+| Value | Behavior |
+|-------|----------|
+| `0` (default, recommended) | FULL sync only on the **first run** (seeds MySQL). All later cycles are INCREMENTAL (`batch-no` > highest in MySQL). Restarts never re-trigger a full sync. |
+| Positive (e.g., `60`) | Additionally re-reads the entire table when that many minutes have passed since the last full sync. Only needed if OpenEdge rows can be edited in place. |
+
+**How the decision works:** after every successful FULL sync the bridge writes the completion time to `sync_state.last_full_sync_utc` in MySQL. On each cycle it compares that timestamp against `FullSyncIntervalMinutes`. If MySQL is unreachable at startup, the bridge falls back to FULL — the safe default that guarantees a complete copy.
+
+**Why `0` is right for this deployment:** OpenEdge `id-print` data is batch-based and write-once — new records always arrive in new batches (higher `batch-no`), and existing rows are not edited. The incremental query therefore sees every new record, and a periodic full re-read only wastes database load on a table that never changes. If the provider ever starts correcting existing rows, set this to `60` (hourly refresh) or similar.
 
 ---
 
@@ -714,6 +852,8 @@ No inbound ports are opened by the bridge itself.
 3. Preserve your `appsettings.json` (do not overwrite with default)
 4. Start the service: `Start-Service OpenEdgeBridge`
 
+> **After upgrading from v1.1 or earlier:** the new `sync_state` table does not exist yet, so the first run performs one FULL sync to seed MySQL and record the timestamp. From then on, only new batches are synced — including across restarts.
+
 ---
 
 ## Checklist for Target PC
@@ -723,6 +863,7 @@ No inbound ports are opened by the bridge itself.
 - [ ] XAMPP installed and MySQL running
 - [ ] `instantid_bridge` database created in MySQL
 - [ ] `id-print` / `id_print` table created in **both** OpenEdge and MySQL
+- [ ] `sync_state` table present in MySQL (auto-created by the bridge after the first run)
 - [ ] `mysql-connector-j-8.0.33.jar` placed in Entrust's lib folder
 - [ ] Bridge `publish/` folder copied to `C:\OpenEdgeBridge\`
 - [ ] `appsettings.json` updated with correct connection strings

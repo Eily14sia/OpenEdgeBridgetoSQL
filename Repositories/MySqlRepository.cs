@@ -56,10 +56,16 @@ public class MySqlRepository : IDisposable
                     printed       = @printed,
                     printed_dt    = @printed_dt,
                     printed_tm    = @printed_tm,
-                    id_type       = @id_type,
+                    tran_type     = @tran_type,
                     image_data    = @image_data,
                     id_code       = @id_code,
-                    print_count   = @print_count
+                    sfx           = @sfx,
+                    photo         = @photo,
+                    gender        = @gender,
+                    date_issued   = @date_issued,
+                    id_no         = @id_no,
+                    year_applied  = @year_applied,
+                    control_no    = @control_no
                 WHERE app_no = @app_no
                 """;
 
@@ -94,9 +100,16 @@ public class MySqlRepository : IDisposable
                     printed,
                     printed_dt,
                     printed_tm,
-                    id_type,
+                    tran_type,
                     image_data,
                     id_code,
+                    sfx,
+                    photo,
+                    gender,
+                    date_issued,
+                    id_no,
+                    year_applied,
+                    control_no,
                     print_count
                 )
                 VALUES
@@ -122,9 +135,16 @@ public class MySqlRepository : IDisposable
                     @printed,
                     @printed_dt,
                     @printed_tm,
-                    @id_type,
+                    @tran_type,
                     @image_data,
                     @id_code,
+                    @sfx,
+                    @photo,
+                    @gender,
+                    @date_issued,
+                    @id_no,
+                    @year_applied,
+                    @control_no,
                     @print_count
                 )
                 """;
@@ -159,10 +179,92 @@ public class MySqlRepository : IDisposable
         cmd.Parameters.AddWithValue("@printed",      (object?)record.Printed     ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@printed_dt",   (object?)record.PrintedDt   ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@printed_tm",   (object?)record.PrintedTm   ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@id_type",      (object?)record.IdType      ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@tran_type",    (object?)record.TranType    ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@image_data",   (object?)record.ImageData   ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@id_code",      (object?)record.IdCode      ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@sfx",          (object?)record.Sfx         ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@photo",        (object?)record.Photo       ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@gender",       (object?)record.Gender      ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@date_issued",  (object?)record.DateIssued  ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@id_no",        (object?)record.IdNo        ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@year_applied", (object?)record.YearApplied ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@control_no",   (object?)record.ControlNo   ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@print_count",  (object?)record.PrintCount  ?? DBNull.Value);
+    }
+
+    private const string LastFullSyncKey = "last_full_sync_utc";
+
+    /// <summary>
+    /// Creates the sync_state table if it does not exist yet.
+    /// Called lazily before every state read/write so the bridge
+    /// self-heals even if MySQL was unavailable at startup.
+    /// </summary>
+    private static async Task EnsureSyncStateTableAsync(MySqlConnection connection)
+    {
+        const string createSql = """
+            CREATE TABLE IF NOT EXISTS sync_state (
+                state_key   VARCHAR(64)  NOT NULL PRIMARY KEY,
+                state_value VARCHAR(64)  NOT NULL,
+                updated_utc DATETIME     NOT NULL
+            ) ENGINE=InnoDB
+            """;
+
+        await using var cmd = new MySqlCommand(createSql, connection);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>
+    /// Reads the UTC timestamp of the last successful FULL sync,
+    /// or null if a full sync has never been recorded.
+    /// </summary>
+    public async Task<DateTime?> GetLastFullSyncUtcAsync()
+    {
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        await EnsureSyncStateTableAsync(connection);
+
+        const string sql = "SELECT state_value FROM sync_state WHERE state_key = @key";
+        await using var cmd = new MySqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@key", LastFullSyncKey);
+
+        object? result = await cmd.ExecuteScalarAsync();
+        if (result == null || result is DBNull)
+            return null;
+
+        string value = Convert.ToString(result)!;
+        return DateTime.TryParse(value,
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal
+                | System.Globalization.DateTimeStyles.AdjustToUniversal,
+            out DateTime parsed)
+            ? parsed
+            : null;
+    }
+
+    /// <summary>
+    /// Persists the UTC timestamp of a successful FULL sync.
+    /// </summary>
+    public async Task SetLastFullSyncUtcAsync(DateTime utc)
+    {
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        await EnsureSyncStateTableAsync(connection);
+
+        const string sql = """
+            INSERT INTO sync_state (state_key, state_value, updated_utc)
+            VALUES (@key, @value, UTC_TIMESTAMP())
+            ON DUPLICATE KEY UPDATE
+                state_value = @value,
+                updated_utc = UTC_TIMESTAMP()
+            """;
+
+        await using var cmd = new MySqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@key", LastFullSyncKey);
+        cmd.Parameters.AddWithValue("@value",
+            utc.ToString("o", System.Globalization.CultureInfo.InvariantCulture));
+        await cmd.ExecuteNonQueryAsync();
     }
 
     /// <summary>

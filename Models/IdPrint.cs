@@ -23,8 +23,20 @@ public class IdPrint
     public string? Printed { get; set; }
     public DateTime? PrintedDt { get; set; }
     public string? PrintedTm { get; set; }
-    public int? IdType { get; set; }
+    public int? TranType { get; set; }
     public byte[]? ImageData { get; set; }
     public int? IdCode { get; set; }
+    public string? Sfx { get; set; }
+    public byte[]? Photo { get; set; }
+    public int? Gender { get; set; }
+    public DateTime? DateIssued { get; set; }
+    public int? IdNo { get; set; }
+    public int? YearApplied { get; set; }
+    public int? ControlNo { get; set; }
+
+    /// <summary>
+    /// MySQL-only column. Incremented by Entrust Instant ID after printing;
+    /// never written by the sync from OpenEdge.
+    /// </summary>
     public int? PrintCount { get; set; }
 }

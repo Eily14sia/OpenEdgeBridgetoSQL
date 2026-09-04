@@ -1,5 +1,5 @@
 """
-Generate a styled PDF (and optionally DOCX) from the client setup guide markdown.
+Generate styled PDFs (and optionally DOCX) from the docs markdown files.
 
 Usage:
     python docs/generate_client_pdf.py
@@ -7,6 +7,7 @@ Usage:
 Outputs:
     docs/OpenEdgeBridge_Client_Setup_Guide.pdf
     docs/OpenEdgeBridge_Client_Setup_Guide.docx
+    docs/OpenEdgeBridge_Documentation.pdf
 """
 import os
 import re
@@ -15,9 +16,14 @@ import markdown
 from xhtml2pdf import pisa
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MD_FILE = os.path.join(BASE_DIR, "OpenEdgeBridge_Client_Setup_Guide.md")
-PDF_FILE = os.path.join(BASE_DIR, "OpenEdgeBridge_Client_Setup_Guide.pdf")
-DOCX_FILE = os.path.join(BASE_DIR, "OpenEdgeBridge_Client_Setup_Guide.docx")
+MD_FILES = [
+    ("OpenEdgeBridge_Client_Setup_Guide.md",
+     "OpenEdgeBridge_Client_Setup_Guide.pdf",
+     "OpenEdgeBridge_Client_Setup_Guide.docx"),
+    ("OpenEdgeBridge_Documentation.md",
+     "OpenEdgeBridge_Documentation.pdf",
+     None),
+]
 
 CSS = """
 @page {
@@ -146,7 +152,7 @@ hr {
 """
 
 
-def build_html(md_text: str) -> str:
+def build_html(md_text: str, footer_title: str) -> str:
     body = markdown.markdown(
         md_text,
         extensions=["tables", "fenced_code", "nl2br"],
@@ -157,21 +163,21 @@ def build_html(md_text: str) -> str:
 <head><meta charset="utf-8"><style>{CSS}</style></head>
 <body>
 {body}
-<div id="footer">OpenEdge Bridge — Client-Side Setup Guide &middot; Page <pdf:pagenumber /> of <pdf:pagecount /></div>
+<div id="footer">OpenEdge Bridge — {footer_title} &middot; Page <pdf:pagenumber /> of <pdf:pagecount /></div>
 </body>
 </html>"""
 
 
-def make_pdf() -> None:
-    with open(MD_FILE, encoding="utf-8") as f:
+def make_pdf(md_path: str, pdf_path: str, footer_title: str) -> None:
+    with open(md_path, encoding="utf-8") as f:
         md_text = f.read()
-    html = build_html(md_text)
-    with open(PDF_FILE, "wb") as out:
+    html = build_html(md_text, footer_title)
+    with open(pdf_path, "wb") as out:
         pisa.CreatePDF(html, dest=out, encoding="utf-8")
-    print(f"PDF created: {PDF_FILE}")
+    print(f"PDF created: {pdf_path}")
 
 
-def make_docx() -> None:
+def make_docx(md_path: str, docx_path: str) -> None:
     """Simple DOCX conversion: HTML -> DOCX via python-docx (if available)."""
     try:
         from docx import Document
@@ -182,7 +188,7 @@ def make_docx() -> None:
         print("python-docx not installed; skipping DOCX generation.")
         return
 
-    with open(MD_FILE, encoding="utf-8") as f:
+    with open(md_path, encoding="utf-8") as f:
         md_text = f.read()
 
     # Convert markdown to HTML, then strip tags into structured text lines.
@@ -315,10 +321,17 @@ def make_docx() -> None:
             elif kind == "li":
                 p.style = "List Bullet"
 
-    doc.save(DOCX_FILE)
-    print(f"DOCX created: {DOCX_FILE}")
+    doc.save(docx_path)
+    print(f"DOCX created: {docx_path}")
 
 
 if __name__ == "__main__":
-    make_pdf()
-    make_docx()
+    for md_name, pdf_name, docx_name in MD_FILES:
+        md_path = os.path.join(BASE_DIR, md_name)
+        pdf_path = os.path.join(BASE_DIR, pdf_name)
+
+        footer_title = "Client-Side Setup Guide" if "Setup_Guide" in md_name else "Documentation"
+        make_pdf(md_path, pdf_path, footer_title)
+
+        if docx_name:
+            make_docx(md_path, os.path.join(BASE_DIR, docx_name))

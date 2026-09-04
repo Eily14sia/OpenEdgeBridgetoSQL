@@ -68,9 +68,16 @@ public class OpenEdgeRepository : IDisposable
                     "printed",
                     "printed-dt",
                     "printed-tm",
-                    "id-type",
+                    "tran-type",
                     "image-data",
-                    "id-code"
+                    "id-code",
+                    "sfx",
+                    "photo",
+                    "gender",
+                    "date-issued",
+                    "id-no",
+                    "year-applied",
+                    "control-no"
                 FROM pub."id-print"
                 WHERE "batch-no" > ?
                 """;
@@ -100,9 +107,16 @@ public class OpenEdgeRepository : IDisposable
                     "printed",
                     "printed-dt",
                     "printed-tm",
-                    "id-type",
+                    "tran-type",
                     "image-data",
-                    "id-code"
+                    "id-code",
+                    "sfx",
+                    "photo",
+                    "gender",
+                    "date-issued",
+                    "id-no",
+                    "year-applied",
+                    "control-no"
                 FROM pub."id-print"
                 """;
         }
@@ -136,9 +150,16 @@ public class OpenEdgeRepository : IDisposable
         int oPrinted     = reader.GetOrdinal("printed");
         int oPrintedDt   = reader.GetOrdinal("printed-dt");
         int oPrintedTm   = reader.GetOrdinal("printed-tm");
-        int oIdType      = reader.GetOrdinal("id-type");
+        int oTranType    = reader.GetOrdinal("tran-type");
         int oImageData   = reader.GetOrdinal("image-data");
         int oIdCode      = reader.GetOrdinal("id-code");
+        int oSfx         = reader.GetOrdinal("sfx");
+        int oPhoto       = reader.GetOrdinal("photo");
+        int oGender      = reader.GetOrdinal("gender");
+        int oDateIssued  = reader.GetOrdinal("date-issued");
+        int oIdNo        = reader.GetOrdinal("id-no");
+        int oYearApplied = reader.GetOrdinal("year-applied");
+        int oControlNo   = reader.GetOrdinal("control-no");
 
         while (await reader.ReadAsync())
         {
@@ -165,9 +186,16 @@ public class OpenEdgeRepository : IDisposable
                 Printed     = reader.IsDBNull(oPrinted)     ? null : ReadLogicalAsYesNo(reader, oPrinted),
                 PrintedDt   = reader.IsDBNull(oPrintedDt)   ? null : reader.GetDateTime(oPrintedDt),
                 PrintedTm   = reader.IsDBNull(oPrintedTm)   ? null : reader.GetString(oPrintedTm),
-                IdType      = reader.IsDBNull(oIdType)      ? null : reader.GetInt32(oIdType),
+                TranType    = reader.IsDBNull(oTranType)    ? null : reader.GetInt32(oTranType),
                 ImageData   = reader.IsDBNull(oImageData)   ? null : (byte[])reader[oImageData],
-                IdCode      = reader.IsDBNull(oIdCode)      ? null : reader.GetInt32(oIdCode)
+                IdCode      = reader.IsDBNull(oIdCode)      ? null : reader.GetInt32(oIdCode),
+                Sfx         = reader.IsDBNull(oSfx)         ? null : reader.GetString(oSfx),
+                Photo       = ReadBlob(reader, oPhoto),
+                Gender      = reader.IsDBNull(oGender)      ? null : reader.GetInt32(oGender),
+                DateIssued  = reader.IsDBNull(oDateIssued)  ? null : reader.GetDateTime(oDateIssued),
+                IdNo        = reader.IsDBNull(oIdNo)        ? null : reader.GetInt32(oIdNo),
+                YearApplied = reader.IsDBNull(oYearApplied) ? null : reader.GetInt32(oYearApplied),
+                ControlNo   = reader.IsDBNull(oControlNo)   ? null : reader.GetInt32(oControlNo)
             });
         }
 
@@ -207,6 +235,24 @@ public class OpenEdgeRepository : IDisposable
                 _                             => "no"
             },
             _ => "no"
+        };
+    }
+
+    /// <summary>
+    /// Reads an OpenEdge BLOB field (e.g. "photo") as a byte array.
+    /// The DataDirect ODBC driver can return byte[] or another binary
+    /// representation depending on the driver version.
+    /// </summary>
+    private static byte[]? ReadBlob(System.Data.Common.DbDataReader reader, int ordinal)
+    {
+        if (reader.IsDBNull(ordinal))
+            return null;
+
+        object raw = reader.GetValue(ordinal);
+        return raw switch
+        {
+            byte[] bytes => bytes,
+            _            => null
         };
     }
 
