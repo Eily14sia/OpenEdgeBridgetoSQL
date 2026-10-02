@@ -40,7 +40,7 @@ public class SyncService
         // FULL runs when the persisted last-full-sync timestamp is missing
         // or older than Sync:FullSyncIntervalMinutes. Restarting the service
         // does NOT by itself force a full sync.
-        int? maxBatchNo = null;                     // null = full sync
+        long? maxTransNo = null;                    // null = full sync
         bool isFullSync = true;
 
         DateTime? lastFullSyncUtc = null;
@@ -60,12 +60,14 @@ public class SyncService
             (_fullSyncIntervalMinutes <= 0 ||
              DateTime.UtcNow - lastFullSyncUtc.Value < TimeSpan.FromMinutes(_fullSyncIntervalMinutes)))
         {
-            // Incremental: only pull batches newer than what we already have.
-            maxBatchNo = await _mySqlRepo.GetMaxBatchNoAsync();
+            // Incremental: only pull rows newer than what we already have.
+            // Watermark is trans_no (the universal PRIMARY key on every row),
+            // because batch_no is NULL on OSCA/senior rows.
+            maxTransNo = await _mySqlRepo.GetMaxTransNoAsync();
             isFullSync = false;
         }
 
-        string mode = isFullSync ? "FULL" : $"INCREMENTAL (batch_no > {maxBatchNo})";
+        string mode = isFullSync ? "FULL" : $"INCREMENTAL (trans_no > {maxTransNo})";
         _logger.LogInformation("Starting id-print sync [{Mode}]: OpenEdge → MySQL...", mode);
 
         int synced = 0;
@@ -74,7 +76,7 @@ public class SyncService
         try
         {
             List<IdPrint> records = await RetryAsync(
-                () => _openEdgeRepo.GetIdPrintsNewerThanAsync(!isFullSync ? maxBatchNo : null),
+                () => _openEdgeRepo.GetIdPrintsNewerThanAsync(!isFullSync ? maxTransNo : null),
                 $"Read id-print from OpenEdge ({mode})");
 
             if (records.Count == 0)
@@ -91,14 +93,14 @@ public class SyncService
                 {
                     await RetryAsync(
                         () => _mySqlRepo.UpsertIdPrintAsync(record),
-                        $"Upsert id-print batch={record.BatchNo} app={record.AppNo}");
+                        $"Upsert id-print trans={record.TransNo} batch={record.BatchNo} app={record.AppNo}");
                     synced++;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex,
-                        "Failed to upsert id-print batch={BatchNo} app={AppNo}",
-                        record.BatchNo, record.AppNo);
+                        "Failed to upsert id-print trans_no={TransNo} batch_no={BatchNo} app_no={AppNo}",
+                        record.TransNo, record.BatchNo, record.AppNo);
                     failed++;
                 }
             }
@@ -145,33 +147,33 @@ public class SyncService
 
         try
         {
-            List<int> appNos = await RetryAsync(
-                () => _mySqlRepo.GetPrintedAppNosAsync(),
-                "Read printed app_nos from MySQL");
+            List<long> transNos = await RetryAsync(
+                () => _mySqlRepo.GetPrintedTransNosAsync(),
+                "Read printed trans_nos from MySQL");
 
-            foreach (int appNo in appNos)
+            foreach (long transNo in transNos)
             {
                 try
                 {
                     // Mark both sides as printed
                     await RetryAsync(
-                        () => _openEdgeRepo.MarkPrintedAsync(appNo),
-                        $"Mark app-no={appNo} as printed in OpenEdge");
+                        () => _openEdgeRepo.MarkPrintedAsync(transNo),
+                        $"Mark trans-no={transNo} as printed in OpenEdge");
                     await RetryAsync(
-                        () => _mySqlRepo.MarkPrintedAsync(appNo),
-                        $"Mark app-no={appNo} as printed in MySQL");
+                        () => _mySqlRepo.MarkPrintedAsync(transNo),
+                        $"Mark trans-no={transNo} as printed in MySQL");
                     updated++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to mark app-no={AppNo} as printed", appNo);
+                    _logger.LogError(ex, "Failed to mark trans-no={TransNo} as printed", transNo);
                     failed++;
                 }
             }
 
             _logger.LogInformation(
                 "Print count back-sync complete. {Updated} marked printed, {Failed} failed (out of {Total}).",
-                updated, failed, appNos.Count);
+                updated, failed, transNos.Count);
         }
         catch (Exception ex)
         {

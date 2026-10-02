@@ -22,20 +22,23 @@ public class OpenEdgeRepository : IDisposable
 
     public async Task<List<IdPrint>> GetIdPrintsAsync()
     {
-        // Full sync — no batch_no filter.
+        // Full sync — no trans_no filter.
         return await GetIdPrintsInternalAsync(null);
     }
 
     /// <summary>
-    /// Incremental sync — only fetch records from batches newer than the given batch_no.
+    /// Incremental sync — only fetch records whose trans-no (the table-wide
+    /// PRIMARY key, id-idx) is newer than the highest trans_no already in MySQL.
+    /// trans-no exists on every row (RTC and OSCA/senior alike), unlike batch-no
+    /// which is NULL for OSCA rows, so it is the safe universal watermark.
     /// Pass null for a full sync.
     /// </summary>
-    public async Task<List<IdPrint>> GetIdPrintsNewerThanAsync(int? minBatchNo)
+    public async Task<List<IdPrint>> GetIdPrintsNewerThanAsync(long? minTransNo)
     {
-        return await GetIdPrintsInternalAsync(minBatchNo);
+        return await GetIdPrintsInternalAsync(minTransNo);
     }
 
-    private async Task<List<IdPrint>> GetIdPrintsInternalAsync(int? minBatchNo)
+    private async Task<List<IdPrint>> GetIdPrintsInternalAsync(long? minTransNo)
     {
         var idPrints = new List<IdPrint>();
 
@@ -43,10 +46,13 @@ public class OpenEdgeRepository : IDisposable
         await connection.OpenAsync();
 
         string sql;
-        if (minBatchNo.HasValue)
+        if (minTransNo.HasValue)
         {
             sql = """
                 SELECT
+                    "trans-no",
+                    "trans-date",
+                    "trans-time",
                     "batch-no",
                     "batch-date",
                     "app-no",
@@ -77,15 +83,21 @@ public class OpenEdgeRepository : IDisposable
                     "date-issued",
                     "id-no",
                     "year-applied",
-                    "control-no"
+                    "control-no",
+                    "id-type",
+                    "PVC-No",
+                    "age"
                 FROM pub."id-print"
-                WHERE "batch-no" > ?
+                WHERE "trans-no" > ?
                 """;
         }
         else
         {
             sql = """
                 SELECT
+                    "trans-no",
+                    "trans-date",
+                    "trans-time",
                     "batch-no",
                     "batch-date",
                     "app-no",
@@ -116,19 +128,25 @@ public class OpenEdgeRepository : IDisposable
                     "date-issued",
                     "id-no",
                     "year-applied",
-                    "control-no"
+                    "control-no",
+                    "id-type",
+                    "PVC-No",
+                    "age"
                 FROM pub."id-print"
                 """;
         }
 
         await using var command = new OdbcCommand(sql, connection);
-        if (minBatchNo.HasValue)
+        if (minTransNo.HasValue)
         {
-            command.Parameters.Add(new OdbcParameter("@minBatchNo", OdbcType.Int) { Value = minBatchNo.Value });
+            command.Parameters.Add(new OdbcParameter("@minTransNo", OdbcType.BigInt) { Value = minTransNo.Value });
         }
 
         await using var reader = await command.ExecuteReaderAsync();
 
+        int oTransNo     = reader.GetOrdinal("trans-no");
+        int oTransDate   = reader.GetOrdinal("trans-date");
+        int oTransTime   = reader.GetOrdinal("trans-time");
         int oBatchNo     = reader.GetOrdinal("batch-no");
         int oBatchDate   = reader.GetOrdinal("batch-date");
         int oAppNo       = reader.GetOrdinal("app-no");
@@ -160,11 +178,17 @@ public class OpenEdgeRepository : IDisposable
         int oIdNo        = reader.GetOrdinal("id-no");
         int oYearApplied = reader.GetOrdinal("year-applied");
         int oControlNo   = reader.GetOrdinal("control-no");
+        int oIdType      = reader.GetOrdinal("id-type");
+        int oPvcNo       = reader.GetOrdinal("PVC-No");
+        int oAge         = reader.GetOrdinal("age");
 
         while (await reader.ReadAsync())
         {
             idPrints.Add(new IdPrint
             {
+                TransNo     = reader.IsDBNull(oTransNo)     ? null : reader.GetInt64(oTransNo),
+                TransDate   = reader.IsDBNull(oTransDate)   ? null : reader.GetDateTime(oTransDate),
+                TransTime   = reader.IsDBNull(oTransTime)   ? null : reader.GetString(oTransTime),
                 BatchNo     = reader.IsDBNull(oBatchNo)     ? null : reader.GetInt32(oBatchNo),
                 BatchDate   = reader.IsDBNull(oBatchDate)   ? null : reader.GetDateTime(oBatchDate),
                 AppNo       = reader.IsDBNull(oAppNo)       ? null : reader.GetInt32(oAppNo),
@@ -193,9 +217,12 @@ public class OpenEdgeRepository : IDisposable
                 Photo       = ReadBlob(reader, oPhoto),
                 Gender      = reader.IsDBNull(oGender)      ? null : reader.GetInt32(oGender),
                 DateIssued  = reader.IsDBNull(oDateIssued)  ? null : reader.GetDateTime(oDateIssued),
-                IdNo        = reader.IsDBNull(oIdNo)        ? null : reader.GetInt32(oIdNo),
+                IdNo        = reader.IsDBNull(oIdNo)        ? null : reader.GetString(oIdNo),
                 YearApplied = reader.IsDBNull(oYearApplied) ? null : reader.GetInt32(oYearApplied),
-                ControlNo   = reader.IsDBNull(oControlNo)   ? null : reader.GetInt32(oControlNo)
+                ControlNo   = reader.IsDBNull(oControlNo)   ? null : reader.GetInt32(oControlNo),
+                IdType      = reader.IsDBNull(oIdType)      ? null : reader.GetInt32(oIdType),
+                PvcNo       = reader.IsDBNull(oPvcNo)       ? null : reader.GetString(oPvcNo),
+                Age         = reader.IsDBNull(oAge)         ? null : reader.GetInt32(oAge)
             });
         }
 
@@ -256,7 +283,7 @@ public class OpenEdgeRepository : IDisposable
         };
     }
 
-    public async Task MarkPrintedAsync(int appNo)
+    public async Task MarkPrintedAsync(long transNo)
     {
         await using var connection = new OdbcConnection(_connectionString);
         await connection.OpenAsync();
@@ -264,15 +291,15 @@ public class OpenEdgeRepository : IDisposable
         const string sql = """
             UPDATE pub."id-print"
             SET "printed" = 1
-            WHERE "app-no" = ?
+            WHERE "trans-no" = ?
             """;
 
         await using var command = new OdbcCommand(sql, connection);
-        command.Parameters.Add(new OdbcParameter("@appNo", OdbcType.Int) { Value = appNo });
+        command.Parameters.Add(new OdbcParameter("@transNo", OdbcType.BigInt) { Value = transNo });
 
         int rows = await command.ExecuteNonQueryAsync();
         if (rows > 0)
-            _logger.LogDebug("Marked app-no={AppNo} as printed in OpenEdge", appNo);
+            _logger.LogDebug("Marked trans-no={TransNo} as printed in OpenEdge", transNo);
     }
 
     public void Dispose()

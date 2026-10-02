@@ -1,7 +1,19 @@
 namespace OpenEdgeBridge.Models;
 
+/// <summary>
+/// One row from OpenEdge "id-print". The table holds two ID kinds side by side,
+/// distinguished by <see cref="TranType"/>:
+///   1 = RTC           -> keyed by BatchNo + AppNo   (trans-no also present)
+///   2 = OSCA / senior -> keyed by ControlNo + IdNo  (single row, not batched)
+/// "trans-no" is the table-wide PRIMARY key (id-idx) and is present on every
+/// row regardless of kind, so it is the universal sync key.
+/// </summary>
 public class IdPrint
 {
+    /// <summary>Universal transaction number — OpenEdge PRIMARY key (id-idx).</summary>
+    public long? TransNo { get; set; }
+    public DateTime? TransDate { get; set; }
+    public string? TransTime { get; set; }
     public int? BatchNo { get; set; }
     public DateTime? BatchDate { get; set; }
     public int? AppNo { get; set; }
@@ -30,9 +42,12 @@ public class IdPrint
     public byte[]? Photo { get; set; }
     public int? Gender { get; set; }
     public DateTime? DateIssued { get; set; }
-    public int? IdNo { get; set; }
+    public string? IdNo { get; set; }
     public int? YearApplied { get; set; }
     public int? ControlNo { get; set; }
+    public int? IdType { get; set; }
+    public string? PvcNo { get; set; }
+    public int? Age { get; set; }
 
     /// <summary>
     /// MySQL-only column. Incremented by Entrust Instant ID after printing;

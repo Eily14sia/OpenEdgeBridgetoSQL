@@ -10,6 +10,13 @@ public class MySqlRepository : IDisposable
     private readonly string _connectionString;
     private readonly ILogger<MySqlRepository> _logger;
 
+    // OpenEdge "id-print" holds two ID kinds distinguished by tran_type; the
+    // natural key used for the MySQL upsert differs per kind:
+    //   1 = RTC          -> key is (batch_no, app_no)     (these are NOT null)
+    //   2 = OSCA/senior  -> key is (control_no, id_no)    (batch_no/app_no are NULL)
+    private const int TranTypeRtc = 1;
+    private const int TranTypeOsca = 2;
+
     public MySqlRepository(IConfiguration configuration, ILogger<MySqlRepository> logger)
     {
         _connectionString = configuration.GetConnectionString("MySql")
@@ -22,22 +29,60 @@ public class MySqlRepository : IDisposable
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        // Check if the record already exists by app_no to avoid burning
+        // OpenEdge "id-print" holds two ID kinds in one table, distinguished by
+        // tran_type. Every row (both kinds) now carries a table-wide unique
+        // "trans-no" (PRIMARY index id-idx in the updated .df), so it is the
+        // universal MySQL key:
+        //   tran_type 1 (RTC)          -> business key = batch_no + app_no
+        //   tran_type 2 (OSCA/senior)  -> business key = control_no + id_no
+        // Use trans_no when it is actually populated (> 0); fall back to the
+        // type-specific key only for legacy rows whose trans_no is still 0.
+        bool isOsca = record.TranType == TranTypeOsca
+            // Fall back for legacy rows whose tran_type is missing/unknown but
+            // that clearly aren't RTC rows (no batch_no AND no app_no).
+            || (record.TranType != TranTypeRtc && !record.BatchNo.HasValue && !record.AppNo.HasValue);
+
+        bool useTransNo = record.TransNo.HasValue && record.TransNo.Value > 0;
+
+        string whereClause;
+        if (useTransNo)
+        {
+            whereClause = "trans_no = @trans_no";
+        }
+        else if (isOsca)
+        {
+            whereClause = "control_no = @control_no AND id_no = @id_no";
+        }
+        else
+        {
+            whereClause = "batch_no = @batch_no AND app_no = @app_no";
+        }
+
+        if (!useTransNo && isOsca && (!record.ControlNo.HasValue || string.IsNullOrEmpty(record.IdNo)))
+            _logger.LogWarning(
+                "OSCA record has no usable key (trans_no={TransNo}, control_no={ControlNo}, id_no={IdNo}); sync will not dedupe it.",
+                record.TransNo, record.ControlNo, record.IdNo);
+
+        // Check if the record already exists by its key to avoid burning
         // auto-increment IDs on every INSERT ... ON DUPLICATE KEY UPDATE cycle.
         // (InnoDB allocates the next auto-increment value even when the INSERT
         //  becomes an UPDATE, causing large gaps over repeated sync runs.)
-        const string checkSql = "SELECT COUNT(1) FROM id_print WHERE app_no = @app_no";
+        string checkSql = $"SELECT COUNT(1) FROM id_print WHERE {whereClause}";
         await using var checkCmd = new MySqlCommand(checkSql, connection);
-        checkCmd.Parameters.AddWithValue("@app_no", (object?)record.AppNo ?? DBNull.Value);
+        AddUpsertParameters(checkCmd, record);
         bool exists = Convert.ToInt64(await checkCmd.ExecuteScalarAsync()) > 0;
 
         if (exists)
         {
-            const string updateSql = """
+            string updateSql = $$"""
                 UPDATE id_print
                 SET
+                    trans_no      = @trans_no,
+                    trans_date    = @trans_date,
+                    trans_time    = @trans_time,
                     batch_no      = @batch_no,
                     batch_date    = @batch_date,
+                    app_no        = @app_no,
                     dob           = @dob,
                     cp_no         = @cp_no,
                     fullname      = @fullname,
@@ -65,20 +110,27 @@ public class MySqlRepository : IDisposable
                     date_issued   = @date_issued,
                     id_no         = @id_no,
                     year_applied  = @year_applied,
-                    control_no    = @control_no
-                WHERE app_no = @app_no
+                    control_no    = @control_no,
+                    id_type       = @id_type,
+                    pvc_no        = @pvc_no,
+                    age           = @age
+                WHERE {{whereClause}}
                 """;
 
             await using var cmd = new MySqlCommand(updateSql, connection);
             AddUpsertParameters(cmd, record);
             await cmd.ExecuteNonQueryAsync();
-            _logger.LogDebug("Updated id-print record app_no={AppNo}", record.AppNo);
+            _logger.LogDebug("Updated id-print record trans_no={TransNo} type={TranType} batch_no={BatchNo} app_no={AppNo}",
+                record.TransNo, record.TranType, record.BatchNo, record.AppNo);
         }
         else
         {
             const string insertSql = """
                 INSERT INTO id_print
                 (
+                    trans_no,
+                    trans_date,
+                    trans_time,
                     batch_no,
                     batch_date,
                     app_no,
@@ -110,10 +162,16 @@ public class MySqlRepository : IDisposable
                     id_no,
                     year_applied,
                     control_no,
+                    id_type,
+                    pvc_no,
+                    age,
                     print_count
                 )
                 VALUES
                 (
+                    @trans_no,
+                    @trans_date,
+                    @trans_time,
                     @batch_no,
                     @batch_date,
                     @app_no,
@@ -145,6 +203,9 @@ public class MySqlRepository : IDisposable
                     @id_no,
                     @year_applied,
                     @control_no,
+                    @id_type,
+                    @pvc_no,
+                    @age,
                     @print_count
                 )
                 """;
@@ -152,12 +213,16 @@ public class MySqlRepository : IDisposable
             await using var cmd = new MySqlCommand(insertSql, connection);
             AddUpsertParameters(cmd, record);
             await cmd.ExecuteNonQueryAsync();
-            _logger.LogDebug("Inserted id-print record batch_no={BatchNo} app_no={AppNo}", record.BatchNo, record.AppNo);
+            _logger.LogDebug("Inserted id-print record trans_no={TransNo} type={TranType} batch_no={BatchNo} app_no={AppNo}",
+                record.TransNo, record.TranType, record.BatchNo, record.AppNo);
         }
     }
 
     private static void AddUpsertParameters(MySqlCommand cmd, IdPrint record)
     {
+        cmd.Parameters.AddWithValue("@trans_no",     (object?)record.TransNo     ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@trans_date",   (object?)record.TransDate   ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@trans_time",   (object?)record.TransTime   ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@batch_no",     (object?)record.BatchNo     ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@batch_date",   (object?)record.BatchDate   ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@app_no",       (object?)record.AppNo       ?? DBNull.Value);
@@ -189,6 +254,9 @@ public class MySqlRepository : IDisposable
         cmd.Parameters.AddWithValue("@id_no",        (object?)record.IdNo        ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@year_applied", (object?)record.YearApplied ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@control_no",   (object?)record.ControlNo   ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@id_type",      (object?)record.IdType      ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@pvc_no",       (object?)record.PvcNo       ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@age",          (object?)record.Age         ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@print_count",  (object?)record.PrintCount  ?? DBNull.Value);
     }
 
@@ -268,40 +336,43 @@ public class MySqlRepository : IDisposable
     }
 
     /// <summary>
-    /// Returns the highest batch_no currently stored in MySQL.
-    /// Used for incremental sync — only fetch newer batches from OpenEdge.
-    /// Each batch from OpenEdge contains ~100 records.
+    /// Returns the highest trans_no currently stored in MySQL.
+    /// Used for incremental sync — only fetch rows whose OpenEdge trans-no is
+    /// greater than this. trans-no is the table-wide PRIMARY key (id-idx) and
+    /// exists on every row (RTC and OSCA/senior alike), so it is a safe
+    /// universal watermark unlike batch_no (which is NULL for OSCA rows).
     /// </summary>
-    public async Task<int?> GetMaxBatchNoAsync()
+    public async Task<long?> GetMaxTransNoAsync()
     {
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        const string sql = "SELECT MAX(batch_no) FROM id_print";
+        const string sql = "SELECT MAX(trans_no) FROM id_print";
         await using var cmd = new MySqlCommand(sql, connection);
         object? result = await cmd.ExecuteScalarAsync();
 
         if (result == null || result is DBNull)
             return null;
 
-        return Convert.ToInt32(result);
+        return Convert.ToInt64(result);
     }
 
     /// <summary>
-    /// Returns the app_no values of records that have been printed by Instant ID
-    /// (print_count > 0) but are not yet marked as printed.
+    /// Returns the trans_no values of records that have been printed by
+    /// Instant ID (print_count > 0) but are not yet marked as printed.
+    /// trans_no is used (not app_no) because OSCA/senior rows have no app_no.
     /// </summary>
-    public async Task<List<int>> GetPrintedAppNosAsync()
+    public async Task<List<long>> GetPrintedTransNosAsync()
     {
-        var appNos = new List<int>();
+        var transNos = new List<long>();
 
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
         const string sql = """
-            SELECT app_no
+            SELECT trans_no
             FROM id_print
-            WHERE app_no > 0
+            WHERE trans_no > 0
               AND print_count > 0
               AND (printed IS NULL OR printed = 'no')
             """;
@@ -312,13 +383,13 @@ public class MySqlRepository : IDisposable
         while (await reader.ReadAsync())
         {
             if (!reader.IsDBNull(0))
-                appNos.Add(reader.GetInt32(0));
+                transNos.Add(reader.GetInt64(0));
         }
 
-        return appNos;
+        return transNos;
     }
 
-    public async Task MarkPrintedAsync(int appNo)
+    public async Task MarkPrintedAsync(long transNo)
     {
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
@@ -326,11 +397,11 @@ public class MySqlRepository : IDisposable
         const string sql = """
             UPDATE id_print
             SET printed = 'yes'
-            WHERE app_no = @app_no
+            WHERE trans_no = @trans_no
             """;
 
         await using var cmd = new MySqlCommand(sql, connection);
-        cmd.Parameters.AddWithValue("@app_no", appNo);
+        cmd.Parameters.AddWithValue("@trans_no", transNo);
         await cmd.ExecuteNonQueryAsync();
     }
 

@@ -4,45 +4,60 @@
 
 ## Sample INSERT Data
 
-### MySQL — `id_print` (11 records)
+> **Note:** The sample INSERTs below show the full schema with **one RTC row followed by one OSCA/senior row**, so you can see which columns each kind populates. RTC fills `batch-no`/`app-no`; OSCA/senior fills `control-no`/`id-no` and leaves `batch-no`/`app-no` NULL. `trans-no` is present on both.
+
+### MySQL — `id_print` (example: one RTC + one OSCA/senior record)
 
 ```sql
-INSERT INTO id_print (batch_no, batch_date, app_no, dob, cp_no, fullname, hcp_fullname, address, hcp_cpno, lname, fname, mname, spa_docno, page_no, book_no, series_no, spa_atty, spa_dt_issue, printed, printed_dt, printed_tm, tran_type, id_code, sfx, photo, gender, date_issued, id_no, year_applied, control_no, print_count)
+INSERT INTO id_print
+(trans_no, trans_date, trans_time, batch_no, batch_date, app_no, dob, cp_no, fullname, hcp_fullname,
+ address, hcp_cpno, lname, fname, mname, spa_docno, page_no, book_no, series_no, spa_atty, spa_dt_issue,
+ printed, printed_dt, printed_tm, tran_type, image_data, id_code, sfx, photo, gender, date_issued,
+ id_no, year_applied, control_no, id_type, pvc_no, age, print_count)
 VALUES
-(1, '2026-01-15', 1001, '1990-05-20', 'CP-001', 'Juan Dela Cruz', 'Dr. Maria Santos', '123 Rizal St, Manila', 'HCP-001', 'Dela Cruz', 'Juan', 'Santos', 'SPA-001', 'P001', 'BK001', 'SR001', 'Atty. Reyes', '2025-12-01', 'no', NULL, NULL, 1, 5001, '', NULL, 1, '2026-01-15', 10001, 2026, 1, 0),
-(1, '2026-01-15', 1002, '1985-08-12', 'CP-002', 'Maria Clara Reyes', 'Dr. Jose Rizal', '456 Mabini St, Quezon City', 'HCP-002', 'Reyes', 'Maria', 'Clara', 'SPA-002', 'P002', 'BK001', 'SR002', 'Atty. Cruz', '2025-12-02', 'no', NULL, NULL, 1, 5002, '', NULL, 2, '2026-01-15', 10002, 2026, 2, 0),
-(1, '2026-01-16', 1003, '1992-03-25', 'CP-003', 'Pedro Penduko', 'Dr. Ana Lopez', '789 Bonifacio Ave, Cebu', 'HCP-003', 'Penduko', 'Pedro', 'Garcia', 'SPA-003', 'P003', 'BK002', 'SR003', 'Atty. Santos', '2025-12-03', 'no', NULL, NULL, 2, 5003, 'JR', NULL, 1, '2026-01-16', 10003, 2026, 3, 1),
-(2, '2026-02-10', 1004, '1988-11-30', 'CP-004', 'Ana Patricia Gomez', 'Dr. Luis Torres', '321 Aguinaldo Rd, Davao', 'HCP-004', 'Gomez', 'Ana', 'Patricia', 'SPA-004', 'P004', 'BK002', 'SR004', 'Atty. Reyes', '2025-12-10', 'yes', '2026-02-11', '10:30:00', 1, 5004, '', NULL, 2, '2026-02-10', 10004, 2026, 4, 1),
-(2, '2026-02-10', 1005, '1995-07-14', 'CP-005', 'Carlos Miguel Tan', 'Dr. Elena Villanueva', '654 Luna St, Makati', 'HCP-005', 'Tan', 'Carlos', 'Miguel', 'SPA-005', 'P005', 'BK003', 'SR005', 'Atty. Dela Rosa', '2025-12-15', 'no', NULL, NULL, 3, 5005, '', NULL, 1, '2026-02-10', 10005, 2026, 5, 2),
-(2, '2026-02-11', 1006, '1982-01-08', 'CP-006', 'Sofia Isabelle Lim', 'Dr. Ramon Bautista', '987 Silang Ave, Pasig', 'HCP-006', 'Lim', 'Sofia', 'Isabelle', 'SPA-006', 'P006', 'BK003', 'SR006', 'Atty. Mercado', '2025-12-20', 'no', NULL, NULL, 1, 5006, '', NULL, 2, '2026-02-11', 10006, 2026, 6, 0),
-(3, '2026-03-05', 1007, '1998-09-18', 'CP-007', 'Rafael Antonio Uy', 'Dr. Patricia Ong', '159 Roxas Blvd, Paranaque', 'HCP-007', 'Uy', 'Rafael', 'Antonio', 'SPA-007', 'P007', 'BK004', 'SR007', 'Atty. Garcia', '2026-01-05', 'yes', '2026-03-06', '14:15:00', 2, 5007, '', NULL, 1, '2026-03-05', 10007, 2026, 7, 1),
-(3, '2026-03-05', 1008, '1991-12-03', 'CP-008', 'Gabriela Nicole Sy', 'Dr. Fernando Aquino', '753 Quezon Blvd, Taguig', 'HCP-008', 'Sy', 'Gabriela', 'Nicole', 'SPA-008', 'P008', 'BK004', 'SR008', 'Atty. Ramos', '2026-01-10', 'no', NULL, NULL, 1, 5008, '', NULL, 2, '2026-03-05', 10008, 2026, 8, 0),
-(3, '2026-03-06', 1009, '1987-04-22', 'CP-009', 'Miguel Alfonso Co', 'Dr. Teresa Javier', '246 Osmena St, Baguio', 'HCP-009', 'Co', 'Miguel', 'Alfonso', 'SPA-009', 'P009', 'BK005', 'SR009', 'Atty. Villar', '2026-01-15', 'no', NULL, NULL, 3, 5009, 'III', NULL, 1, '2026-03-06', 10009, 2026, 9, 3),
-(4, '2026-04-20', 1010, '1993-06-11', 'CP-010', 'Isabella Marie Chua', 'Dr. Roberto Domingo', '135 Kalayaan Ave, Pampanga', 'HCP-010', 'Chua', 'Isabella', 'Marie', 'SPA-010', 'P010', 'BK005', 'SR010', 'Atty. Pineda', '2026-02-01', 'no', NULL, NULL, 1, 5010, '', NULL, 2, '2026-04-20', 10010, 2026, 10, 0),
-(4, '2026-04-20', 1011, '1980-10-05', 'CP-011', 'Antonio Luis Pangilinan', 'Dr. Carmen Salazar', '864 EDSA, Mandaluyong', 'HCP-011', 'Pangilinan', 'Antonio', 'Luis', 'SPA-011', 'P011', 'BK006', 'SR011', 'Atty. Hernandez', '2026-02-10', 'yes', '2026-04-21', '09:00:00', 2, 5011, '', NULL, 1, '2026-04-20', 10011, 2026, 11, 2);
+-- RTC record (tran_type 1): keyed by batch_no + app_no
+(1001, '2026-01-15', '10:30:00', 1, '2026-01-15', 1001, '1990-05-20', 'CP-001', 'Juan Dela Cruz',
+ 'Dr. Maria Santos', '123 Rizal St, Manila', 'HCP-001', 'Dela Cruz', 'Juan', 'Santos', 'SPA-001',
+ 'P001', 'BK001', 'SR001', 'Atty. Reyes', '2025-12-01', 'no', NULL, NULL, 1, NULL, 5001, '', NULL,
+ 1, NULL, NULL, 0, 0, 1, 'PVC-000001', 0, 0),
+-- OSCA/senior record (tran_type 2): keyed by control_no + id_no; batch_no/app_no are NULL
+(2001, '2026-01-16', '09:15:00', NULL, NULL, NULL, '1941-11-18', '', 'Maria Clara Santos', '',
+ '456 Mabini St, Quezon City', '', 'Santos', 'Maria', 'Clara', '', '', '', '', '', NULL, 'no',
+ NULL, NULL, 2, NULL, NULL, '', NULL, 2, '2026-01-16', 'OSCA-2026-0001', 2026, 9001,
+ 1, 'PVC-000901', 84, 0);
 ```
 
-### OpenEdge (Progress) — `pub."id-print"` (11 records)
+### OpenEdge (Progress) — `pub."id-print"` (example: one RTC + one OSCA/senior record)
 
 ```sql
-INSERT INTO pub."id-print" ("batch-no", "batch-date", "app-no", "dob", "cp-no", "fullname", "hcp-fullname", "address", "hcp-cpno", "lname", "fname", "mname", "spa-docno", "page-no", "book-no", "series-no", "spa-atty", "spa-dt-issue", "printed", "printed-dt", "printed-tm", "tran-type", "id-code", "sfx", "photo", "gender", "date-issued", "id-no", "year-applied", "control-no")
+INSERT INTO pub."id-print"
+("trans-no", "trans-date", "trans-time", "batch-no", "batch-date", "app-no", "dob", "cp-no",
+ "fullname", "hcp-fullname", "address", "hcp-cpno", "lname", "fname", "mname", "spa-docno",
+ "page-no", "book-no", "series-no", "spa-atty", "spa-dt-issue", "printed", "printed-dt",
+ "printed-tm", "tran-type", "image-data", "id-code", "sfx", "photo", "gender", "date-issued",
+ "id-no", "year-applied", "control-no", "id-type", "PVC-No", "age")
 VALUES
-(1, '2026-01-15', 1001, '1990-05-20', 'CP-001', 'Juan Dela Cruz', 'Dr. Maria Santos', '123 Rizal St, Manila', 'HCP-001', 'Dela Cruz', 'Juan', 'Santos', 'SPA-001', 'P001', 'BK001', 'SR001', 'Atty. Reyes', '2025-12-01', 0, NULL, NULL, 1, 5001, '', NULL, 1, '2026-01-15', 10001, 2026, 1),
-(1, '2026-01-15', 1002, '1985-08-12', 'CP-002', 'Maria Clara Reyes', 'Dr. Jose Rizal', '456 Mabini St, Quezon City', 'HCP-002', 'Reyes', 'Maria', 'Clara', 'SPA-002', 'P002', 'BK001', 'SR002', 'Atty. Cruz', '2025-12-02', 0, NULL, NULL, 1, 5002, '', NULL, 2, '2026-01-15', 10002, 2026, 2),
-(1, '2026-01-16', 1003, '1992-03-25', 'CP-003', 'Pedro Penduko', 'Dr. Ana Lopez', '789 Bonifacio Ave, Cebu', 'HCP-003', 'Penduko', 'Pedro', 'Garcia', 'SPA-003', 'P003', 'BK002', 'SR003', 'Atty. Santos', '2025-12-03', 0, NULL, NULL, 2, 5003, 'JR', NULL, 1, '2026-01-16', 10003, 2026, 3),
-(2, '2026-02-10', 1004, '1988-11-30', 'CP-004', 'Ana Patricia Gomez', 'Dr. Luis Torres', '321 Aguinaldo Rd, Davao', 'HCP-004', 'Gomez', 'Ana', 'Patricia', 'SPA-004', 'P004', 'BK002', 'SR004', 'Atty. Reyes', '2025-12-10', 1, '2026-02-11', '10:30:00', 1, 5004, '', NULL, 2, '2026-02-10', 10004, 2026, 4),
-(2, '2026-02-10', 1005, '1995-07-14', 'CP-005', 'Carlos Miguel Tan', 'Dr. Elena Villanueva', '654 Luna St, Makati', 'HCP-005', 'Tan', 'Carlos', 'Miguel', 'SPA-005', 'P005', 'BK003', 'SR005', 'Atty. Dela Rosa', '2025-12-15', 0, NULL, NULL, 3, 5005, '', NULL, 1, '2026-02-10', 10005, 2026, 5),
-(2, '2026-02-11', 1006, '1982-01-08', 'CP-006', 'Sofia Isabelle Lim', 'Dr. Ramon Bautista', '987 Silang Ave, Pasig', 'HCP-006', 'Lim', 'Sofia', 'Isabelle', 'SPA-006', 'P006', 'BK003', 'SR006', 'Atty. Mercado', '2025-12-20', 0, NULL, NULL, 1, 5006, '', NULL, 2, '2026-02-11', 10006, 2026, 6),
-(3, '2026-03-05', 1007, '1998-09-18', 'CP-007', 'Rafael Antonio Uy', 'Dr. Patricia Ong', '159 Roxas Blvd, Paranaque', 'HCP-007', 'Uy', 'Rafael', 'Antonio', 'SPA-007', 'P007', 'BK004', 'SR007', 'Atty. Garcia', '2026-01-05', 1, '2026-03-06', '14:15:00', 2, 5007, '', NULL, 1, '2026-03-05', 10007, 2026, 7),
-(3, '2026-03-05', 1008, '1991-12-03', 'CP-008', 'Gabriela Nicole Sy', 'Dr. Fernando Aquino', '753 Quezon Blvd, Taguig', 'HCP-008', 'Sy', 'Gabriela', 'Nicole', 'SPA-008', 'P008', 'BK004', 'SR008', 'Atty. Ramos', '2026-01-10', 0, NULL, NULL, 1, 5008, '', NULL, 2, '2026-03-05', 10008, 2026, 8),
-(3, '2026-03-06', 1009, '1987-04-22', 'CP-009', 'Miguel Alfonso Co', 'Dr. Teresa Javier', '246 Osmena St, Baguio', 'HCP-009', 'Co', 'Miguel', 'Alfonso', 'SPA-009', 'P009', 'BK005', 'SR009', 'Atty. Villar', '2026-01-15', 0, NULL, NULL, 3, 5009, 'III', NULL, 1, '2026-03-06', 10009, 2026, 9),
-(4, '2026-04-20', 1010, '1993-06-11', 'CP-010', 'Isabella Marie Chua', 'Dr. Roberto Domingo', '135 Kalayaan Ave, Pampanga', 'HCP-010', 'Chua', 'Isabella', 'Marie', 'SPA-010', 'P010', 'BK005', 'SR010', 'Atty. Pineda', '2026-02-01', 0, NULL, NULL, 1, 5010, '', NULL, 2, '2026-04-20', 10010, 2026, 10),
-(4, '2026-04-20', 1011, '1980-10-05', 'CP-011', 'Antonio Luis Pangilinan', 'Dr. Carmen Salazar', '864 EDSA, Mandaluyong', 'HCP-011', 'Pangilinan', 'Antonio', 'Luis', 'SPA-011', 'P011', 'BK006', 'SR011', 'Atty. Hernandez', '2026-02-10', 1, '2026-04-21', '09:00:00', 2, 5011, '', NULL, 1, '2026-04-20', 10011, 2026, 11);
+-- RTC record (tran-type 1): keyed by batch-no + app-no
+(1001, '2026-01-15', '10:30:00', 1, '2026-01-15', 1001, '1990-05-20', 'CP-001', 'Juan Dela Cruz',
+ 'Dr. Maria Santos', '123 Rizal St, Manila', 'HCP-001', 'Dela Cruz', 'Juan', 'Santos', 'SPA-001',
+ 'P001', 'BK001', 'SR001', 'Atty. Reyes', '2025-12-01', 0, NULL, '', 1, NULL, 5001, '', NULL,
+ 1, NULL, '', 0, 0, 1, 'PVC-000001', 0),
+-- OSCA/senior record (tran-type 2): keyed by control-no + id-no; batch-no/app-no are NULL
+(2001, '2026-01-16', '09:15:00', NULL, NULL, NULL, '1941-11-18', '', 'Maria Clara Santos', '',
+ '456 Mabini St, Quezon City', '', 'Santos', 'Maria', 'Clara', '', '', '', '', '', NULL, 0,
+ NULL, '', 2, NULL, 0, '', NULL, 2, '2026-01-16', 'OSCA-2026-0001', 2026, 9001,
+ 1, 'PVC-000901', 84);
 ```
 
+> **Notes on the sample above**
+> - `trans-no` is the universal key — every row has one. It must be unique (OpenEdge PRIMARY index `id-idx`).
+> - RTC rows fill `batch-no`/`app-no`; OSCA rows fill `control-no`/`id-no` and leave `batch-no`/`app-no` as NULL.
+> - OpenEdge logical fields (`printed`) are `0/1`; the MySQL mirror stores them as `'no'/'yes'`.
+> - A copy of these two rows is in `docs/load-id-print.sql`, runnable against the local `iddb` via `sqlexp`.
 
-**Version:** 1.2  
-**Date:** September 4, 2026  
+
+**Version:** 1.4  
+**Date:** September 8, 2026
 **Purpose:** Sync bridge between Progress OpenEdge and MySQL for Entrust Instant ID card printing. Reads `"id-print"` from OpenEdge and mirrors it to MySQL's `id_print` table.
 
 ---
@@ -84,7 +99,8 @@ OpenEdge "id-print" ──► C# Service ──► MySQL id_print table
        (read)               (sync loop)         (upsert)
 ```
 
-All 31 fields from the `id-print` table are synced, including:
+All 37 fields from the `id-print` table are synced, including:
+- `trans-no`, `trans-date`, `trans-time`
 - `batch-no`, `batch-date`, `app-no`, `dob`
 - `cp-no`, `fullname`, `hcp-fullname`, `address`, `hcp-cpno`
 - `lname`, `fname`, `mname`
@@ -92,8 +108,15 @@ All 31 fields from the `id-print` table are synced, including:
 - `printed`, `printed-dt`, `printed-tm`
 - `tran-type`, `image-data`, `id-code`, `sfx`, `photo`
 - `gender`, `date-issued`, `id-no`, `year-applied`, `control-no`
+- `id-type`, `PVC-No`, `age`
 
-Runs every N seconds (configurable in `appsettings.json`). Uses **check-then-update** upserts (SELECT by `app_no`, then UPDATE or INSERT) to avoid duplicates. `print_count` is only inserted on first sync; subsequent updates do NOT overwrite it (Instant ID manages `print_count`).
+The table holds **two ID kinds side by side**, distinguished by `tran-type`:
+- `tran-type` **1 = RTC** → identified by `batch-no` + `app-no` (batched, many rows per run)
+- `tran-type` **2 = OSCA/senior** → identified by `control-no` + `id-no` (single row, not batched)
+
+`trans-no` is the **PRIMARY index** (`id-idx`) in OpenEdge and is present on **every** row of both kinds, so it is the universal key used by the bridge for fetching, deduplication, and the printed back-sync.
+
+Runs every N seconds (configurable in `appsettings.json`). Uses **check-then-update** upserts (SELECT by `trans_no`, then UPDATE or INSERT) to avoid duplicates. `print_count` is only inserted on first sync; subsequent updates do NOT overwrite it (Instant ID manages `print_count`).
 
 #### Full vs. Incremental Sync
 
@@ -102,9 +125,11 @@ The bridge has two read modes, decided automatically on every cycle:
 | Mode | Trigger | What it reads from OpenEdge |
 |------|---------|------------------------------|
 | **FULL** | No `last_full_sync_utc` recorded yet (first run, or fresh MySQL) | All rows in `pub."id-print"` — seeds/refreshes the entire MySQL table |
-| **INCREMENTAL** | A full sync has already been recorded | Only rows with `batch-no` greater than the highest `batch_no` already in MySQL |
+| **INCREMENTAL** | A full sync has already been recorded | Only rows with `trans-no` greater than the highest `trans_no` already in MySQL |
 
-OpenEdge `id-print` records are **write-once** — new data arrives only as new batches; existing rows are never edited. Therefore, with the default `Sync:FullSyncIntervalMinutes = 0`, the full sync runs **once** (the initial seed) and every later cycle is incremental. Restarting the service or rebooting the PC does **not** cause another full sync — the timestamp is persisted in MySQL's `sync_state` table (see [Database Tables](#database-tables)).
+The incremental watermark is `trans-no` (not `batch-no`) because `trans-no` is the table-wide PRIMARY key that exists on every row — RTC batches and OSCA single records alike — whereas `batch-no` is NULL on OSCA/senior rows. New records always carry a newer `trans-no`, so incremental sync picks up both kinds.
+
+OpenEdge `id-print` records are **write-once** — new data arrives only as new transactions/batches; existing rows are never edited. Therefore, with the default `Sync:FullSyncIntervalMinutes = 0`, the full sync runs **once** (the initial seed) and every later cycle is incremental. Restarting the service or rebooting the PC does **not** cause another full sync — the timestamp is persisted in MySQL's `sync_state` table (see [Database Tables](#database-tables)).
 
 If `Sync:FullSyncIntervalMinutes` is set to a positive value (e.g., `60`), a full sync also runs when that many minutes have elapsed since the last successful full sync — useful only if OpenEdge rows ever start getting edited in place.
 
@@ -117,7 +142,7 @@ MySQL id_print ──────► C# Service ──────► OpenEdge "
  (print_count > 0)    (check + mark)       (SET printed = yes)
 ```
 
-When Instant ID increments `print_count > 0` on a record, the bridge detects it and sets `printed = yes` in the corresponding OpenEdge record.
+When Instant ID increments `print_count > 0` on a record, the bridge detects it and sets `printed = yes` in the corresponding OpenEdge record. It addresses OpenEdge rows by `trans-no` (not `app-no`), because OSCA/senior rows have no `app-no`.
 
 ---
 
@@ -221,6 +246,13 @@ ADD FIELD "batch-date" OF "id-print" AS date
   POSITION 3
   MAX-WIDTH 4
   ORDER 20
+
+ADD FIELD "date-issued" OF "id-print" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  POSITION 29
+  MAX-WIDTH 4
+  ORDER 280
 
 ADD FIELD "app-no" OF "id-print" AS integer 
   FORMAT "->,>>>,>>9"
@@ -400,21 +432,6 @@ ADD FIELD "gender" OF "id-print" AS integer
   POSITION 28
   MAX-WIDTH 4
   ORDER 270
-
-ADD FIELD "date-issued" OF "id-print" AS date 
-  FORMAT "99/99/9999"
-  INITIAL ?
-  POSITION 29
-  MAX-WIDTH 4
-  ORDER 280
-
-ADD FIELD "id-no" OF "id-print" AS integer 
-  FORMAT "->,>>>,>>9"
-  INITIAL "0"
-  POSITION 30
-  MAX-WIDTH 4
-  ORDER 290
-
 ADD FIELD "year-applied" OF "id-print" AS integer 
   FORMAT ">>>9999"
   INITIAL "0"
@@ -429,11 +446,78 @@ ADD FIELD "control-no" OF "id-print" AS integer
   MAX-WIDTH 4
   ORDER 310
 
+ADD FIELD "id-no" OF "id-print" AS character 
+  FORMAT "x(25)"
+  INITIAL ""
+  POSITION 33
+  MAX-WIDTH 50
+  ORDER 320
+
+ADD FIELD "id-type" OF "id-print" AS integer 
+  DESCRIPTION "1=New, 2=ReIssue/Reprint"
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  POSITION 34
+  MAX-WIDTH 4
+  ORDER 330
+
+ADD FIELD "PVC-No" OF "id-print" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  POSITION 35
+  MAX-WIDTH 70
+  ORDER 340
+
+ADD FIELD "age" OF "id-print" AS integer 
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  POSITION 36
+  MAX-WIDTH 4
+  ORDER 350
+
+ADD FIELD "trans-no" OF "id-print" AS int64 
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  POSITION 37
+  MAX-WIDTH 8
+  ORDER 360
+
+ADD FIELD "trans-date" OF "id-print" AS date 
+  FORMAT "99/99/99"
+  INITIAL ?
+  POSITION 38
+  MAX-WIDTH 4
+  ORDER 370
+
+ADD FIELD "trans-time" OF "id-print" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  POSITION 39
+  MAX-WIDTH 60
+  ORDER 380
+
+ADD INDEX "id-idx" ON "id-print" 
+  AREA "Schema Area"
+  PRIMARY
+  INDEX-FIELD "trans-no" ASCENDING 
+
+ADD INDEX "oscaid-idx" ON "id-print" 
+  AREA "Schema Area"
+  INDEX-FIELD "control-no" ASCENDING 
+  INDEX-FIELD "id-no" ASCENDING 
+  INDEX-FIELD "tran-type" ASCENDING 
+
+ADD INDEX "rtcid-idx" ON "id-print" 
+  AREA "Schema Area"
+  INDEX-FIELD "batch-no" ASCENDING 
+  INDEX-FIELD "app-no" ASCENDING 
+  INDEX-FIELD "tran-type" ASCENDING 
+
 .
 PSC
 cpstream=ISO8859-1
 .
-0000004144
+0000005403
 ```
 
 Then, in **Proenv**, load the `.df` file into the database:
@@ -460,6 +544,9 @@ In the Data Dictionary menu, select **Admin → Load Data Definitions → .df fi
 
 ```sql
 CREATE TABLE "id-print" (
+    "trans-no"      BIGINT        NOT NULL,
+    "trans-date"    DATE          NULL,
+    "trans-time"    VARCHAR(30)   NOT NULL DEFAULT '',
     "batch-no"      INTEGER       NOT NULL DEFAULT 0,
     "batch-date"    DATE          NULL,
     "app-no"        INTEGER       NOT NULL DEFAULT 0,
@@ -467,7 +554,7 @@ CREATE TABLE "id-print" (
     "cp-no"         VARCHAR(15)   NOT NULL DEFAULT '',
     "fullname"      VARCHAR(65)   NOT NULL DEFAULT '',
     "hcp-fullname"  VARCHAR(65)   NOT NULL DEFAULT '',
-    "address"       VARCHAR(65)   NOT NULL DEFAULT '',
+    "address"       VARCHAR(100)   NOT NULL DEFAULT '',
     "hcp-cpno"      VARCHAR(15)   NOT NULL DEFAULT '',
     "lname"         VARCHAR(55)   NOT NULL DEFAULT '',
     "fname"         VARCHAR(55)   NOT NULL DEFAULT '',
@@ -488,9 +575,13 @@ CREATE TABLE "id-print" (
     "photo"         BLOB          NULL,
     "gender"        INTEGER       NOT NULL DEFAULT 0,
     "date-issued"   DATE          NULL,
-    "id-no"         INTEGER       NOT NULL DEFAULT 0,
+    "id-no"         VARCHAR(25)   NOT NULL DEFAULT '',
     "year-applied"  INTEGER       NOT NULL DEFAULT 0,
-    "control-no"    INTEGER       NOT NULL DEFAULT 0
+    "control-no"    INTEGER       NOT NULL DEFAULT 0,
+    "id-type"       INTEGER       NOT NULL DEFAULT 0,
+    "PVC-No"        VARCHAR(35)   NOT NULL DEFAULT '',
+    "age"           INTEGER       NOT NULL DEFAULT 0,
+    PRIMARY KEY ("trans-no")
 );
 ```
 
@@ -505,6 +596,9 @@ CREATE TABLE "id-print" (
 ```sql
 CREATE TABLE IF NOT EXISTS id_print (
     id             INT           NOT NULL AUTO_INCREMENT,
+    trans_no       BIGINT        NULL        COMMENT 'Universal transaction no (OpenEdge PRIMARY key id-idx)',
+    trans_date     DATE          NULL        COMMENT 'Transaction date',
+    trans_time     VARCHAR(30)   NULL        COMMENT 'Transaction time',
     batch_no       INT           NULL,
     batch_date     DATE          NULL,
     app_no         INT           NULL,
@@ -512,7 +606,7 @@ CREATE TABLE IF NOT EXISTS id_print (
     cp_no          VARCHAR(15)   NULL,
     fullname       VARCHAR(65)   NULL,
     hcp_fullname   VARCHAR(65)   NULL,
-    address        VARCHAR(65)   NULL,
+    address        VARCHAR(100)  NULL,
     hcp_cpno       VARCHAR(15)   NULL,
     lname          VARCHAR(55)   NULL,
     fname          VARCHAR(55)   NULL,
@@ -533,39 +627,59 @@ CREATE TABLE IF NOT EXISTS id_print (
     photo          LONGBLOB      NULL,
     gender         INT           NULL        COMMENT '1 = Female, 2 = Male',
     date_issued    DATE          NULL,
-    id_no          INT           NULL,
+    id_no          VARCHAR(25)   NULL,
     year_applied   INT           NULL,
     control_no     INT           NULL,
+    id_type        INT           NULL        COMMENT '1 = New, 2 = ReIssue/Reprint',
+    pvc_no         VARCHAR(35)   NULL,
+    age            INT           NULL,
     signature_data LONGBLOB      NULL        COMMENT 'Signature image; written by Entrust Instant ID (MySQL only, NOT synced from OpenEdge)',
     qr_data        LONGBLOB      NULL        COMMENT 'QR code image; written by Entrust Instant ID (MySQL only, NOT synced from OpenEdge)',
     print_count    INT           NULL        COMMENT 'Incremented by Instant ID; triggers printed=yes back-sync',
     PRIMARY KEY (id),
-    UNIQUE INDEX idx_app_no (app_no)
+    UNIQUE INDEX idx_trans_no (trans_no),
+    INDEX idx_rtc_key (tran_type, batch_no, app_no),
+    INDEX idx_osca_key (tran_type, control_no, id_no),
+    INDEX idx_print_sync (printed, print_count, trans_no)
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 ```
 
-> **Note:** `id` is an internal auto-increment primary key. `app_no` is the unique business key — the bridge uses it for deduplication (it SELECTs by `app_no` first, then UPDATEs or INSERTs as needed).
+> **Note:** `id` is an internal auto-increment primary key. `trans_no` is the **universal business key** — it mirrors OpenEdge's PRIMARY index (`id-idx`) and exists on **every** row, both RTC (`tran-type` 1) and OSCA/senior (`tran-type` 2) alike. The bridge uses it for deduplication (it SELECTs by `trans_no` first, then UPDATEs or INSERTs as needed). Unlike `batch_no`/`app_no` — which are NULL on OSCA rows — `trans_no` is never NULL, which is why it is the sync watermark too. `idx_rtc_key` and `idx_osca_key` are just lookup indexes for the type-specific business keys.
 
 > **MySQL-only columns (`signature_data`, `qr_data`):** These store the cardholder's signature and QR-code images and are **MySQL only**. They do **not** exist in the OpenEdge `"id-print"` table and are **never read from or written back to OpenEdge**. Entrust Instant ID populates them directly in MySQL. The bridge deliberately leaves them untouched — it does not include them in its INSERT/UPDATE, so syncing from OpenEdge will never overwrite them.
 
 > **Already have the table?** If you created `id_print` before these columns existed, add them with:
 > ```sql
 > ALTER TABLE id_print
+>   MODIFY COLUMN address      VARCHAR(100) NULL,
 >   CHANGE COLUMN id_type tran_type INT NULL COMMENT '1 = for RTC, 2 = senior',
+>   ADD COLUMN image_data    LONGBLOB    NULL AFTER tran_type,
 >   ADD COLUMN sfx          VARCHAR(15) NULL AFTER id_code,
 >   ADD COLUMN photo        LONGBLOB    NULL AFTER sfx,
 >   ADD COLUMN gender       INT         NULL COMMENT '1 = Female, 2 = Male' AFTER photo,
 >   ADD COLUMN date_issued  DATE        NULL AFTER gender,
->   ADD COLUMN id_no        INT         NULL AFTER date_issued,
+>   MODIFY COLUMN id_no     VARCHAR(25) NULL AFTER gender,
 >   ADD COLUMN year_applied INT         NULL AFTER id_no,
 >   ADD COLUMN control_no   INT         NULL AFTER year_applied,
->   ADD COLUMN signature_data LONGBLOB  NULL AFTER control_no,
->   ADD COLUMN qr_data        LONGBLOB  NULL AFTER signature_data;
+>   ADD COLUMN id_type      INT         NULL COMMENT '1 = New, 2 = ReIssue/Reprint' AFTER control_no,
+>   ADD COLUMN pvc_no       VARCHAR(35) NULL AFTER id_type,
+>   ADD COLUMN age          INT         NULL AFTER pvc_no,
+>   ADD COLUMN trans_no     BIGINT      NULL AFTER age,
+>   ADD COLUMN trans_date   DATE        NULL AFTER trans_no,
+>   ADD COLUMN trans_time   VARCHAR(30) NULL AFTER trans_date,
+>   ADD COLUMN signature_data LONGBLOB  NULL AFTER trans_time,
+>   ADD COLUMN qr_data        LONGBLOB  NULL AFTER signature_data,
+>   DROP INDEX idx_app_no,
+>   DROP INDEX idx_batch_no,
+>   ADD UNIQUE INDEX idx_trans_no (trans_no),
+>   ADD INDEX idx_rtc_key (tran_type, batch_no, app_no),
+>   ADD INDEX idx_osca_key (tran_type, control_no, id_no),
+>   ADD INDEX idx_print_sync (printed, print_count, trans_no);
 > ```
 >
-> > **Schema update (2026-09-03):** OpenEdge renamed `id-type` to `tran-type` and added `sfx`, `photo`, `gender`, `date-issued`, `id-no`, `year-applied`, and `control-no`. If your OpenEdge `"id-print"` table was created with the older `.df`, reload the updated `.df` (Step 0-E) or add the new fields with `ADD FIELD` in the Data Dictionary, then run the ALTER above on MySQL.
+> > **Schema update (2026-09-08):** The OpenEdge `.df` now has `trans-no` (int64) as its PRIMARY index (`id-idx`) and adds `id-type`, `PVC-No`, `age`, `trans-date`, `trans-time`. `trans-no` is the universal business key and incremental watermark (present on both RTC and OSCA rows, unlike `batch-no`/`app_no` which are NULL on OSCA rows). Reload the updated `.df` (Step 0-E), then run the ALTER above on MySQL.
 
 ### `sync_state` (bridge state table — MySQL only, auto-created)
 
@@ -589,9 +703,12 @@ Think of each row as **one person's ID-card application folder**. The columns ar
 
 | OpenEdge name | MySQL name | Plain English meaning |
 |---|---|---|
-| `batch-no` | `batch_no` | **Group number** — which batch/run of applications this person came in with (like a batch printing number) |
+| `trans-no` | `trans_no` | **Transaction number** — the table-wide PRIMARY key (`id-idx`). Every row has one, RTC and OSCA alike; this is the bridge's universal matchmaker |
+| `trans-date` | `trans_date` | **Transaction date** — when the record was created |
+| `trans-time` | `trans_time` | **Transaction time** — time the record was created |
+| `batch-no` | `batch_no` | **Group number** — which batch/run of RTC applications this person came in with (NULL for OSCA/senior rows) |
 | `batch-date` | `batch_date` | **Date of that group** — when their batch was made |
-| `app-no` | `app_no` | **Application number** — the unique file number of this person's ID application. This is the "fingerprint" that tells us which person is which |
+| `app-no` | `app_no` | **Application number** — the RTC application file number (part of the RTC key with `batch-no`; NULL on OSCA/senior rows) |
 | `dob` | `dob` | **Date of birth** |
 | `cp-no` | `cp_no` | **The person's reference number** (their own control/card number) |
 | `fullname` | `fullname` | **Full name** — complete name all in one |
@@ -607,16 +724,19 @@ Think of each row as **one person's ID-card application folder**. The columns ar
 | `page-no` | `page_no` | **Page number** — which page in the record book this person is on |
 | `book-no` | `book_no` | **Book number** — which record book |
 | `series-no` | `series_no` | **Series number** — the serial number of the ID |
-| `tran-type` | `tran_type` | **Kind of ID / transaction type** — `1` = regular (RTC), `2` = senior citizen |
+| `tran-type` | `tran_type` | **Kind of ID / transaction type** — `1` = regular (RTC), `2` = senior citizen (OSCA). RTC rows are keyed by `batch-no`+`app-no`; OSCA rows by `control-no`+`id-no` |
 | `image-data` | `image_data` | **The person's photo** (picture file) |
 | `id-code` | `id_code` | **ID code** — the code number printed on the card |
 | `sfx` | `sfx` | **Name suffix** — e.g. Jr., Sr., III |
 | `photo` | `photo` | **Photo** — the cardholder's photograph (BLOB image) |
 | `gender` | `gender` | **Gender** — `1` = Female, `2` = Male |
 | `date-issued` | `date_issued` | **Date the ID card was issued** |
-| `id-no` | `id_no` | **ID number** — the person's ID number |
+| `id-no` | `id_no` | **ID number** — character value from OpenEdge |
 | `year-applied` | `year_applied` | **Year the application was filed** (e.g. `2026`) |
-| `control-no` | `control_no` | **Control number** — application/control tracking number |
+| `control-no` | `control_no` | **Control number** — application/control tracking number (the OSCA/senior ID key, with `id-no`) |
+| `id-type` | `id_type` | **Issue kind** — `1` = New, `2` = ReIssue/Reprint |
+| `pvc-no` | `pvc_no` | **PVC number** — the blank card/PVC stock used |
+| `age` | `age` | **Age** — used on OSCA/senior rows |
 | `printed` | `printed` | **Has it been printed yet?** — `yes` or `no` |
 | `printed-dt` | `printed_dt` | **Date it was printed** |
 | `printed-tm` | `printed_tm` | **Time it was printed** |
@@ -625,7 +745,7 @@ Think of each row as **one person's ID-card application folder**. The columns ar
 | — | `print_count` | **How many times it got printed** — *MySQL only*. Instant ID counts this; it's never overwritten by the bridge |
 | — | `id` | **Row number** — MySQL's own internal counter. Not business data, ignore it |
 
-**30-second summary:** The bridge copies the person's details (name, birthdate, address, photo, etc.) **from OpenEdge → MySQL**, like photocopying the folder. `app_no` is the **matchmaker** — it makes sure updates land on the right person. The three columns that exist **only in MySQL** (`signature_data`, `qr_data`, `print_count`) are filled in by the **Entrust machine**, and the bridge never touches them.
+**30-second summary:** The bridge copies the person's details (name, birthdate, address, photo, etc.) **from OpenEdge → MySQL**, like photocopying the folder. `trans_no` is the **matchmaker** — it exists on every row (RTC and OSCA/senior alike) and makes sure updates land on the right row. The three columns that exist **only in MySQL** (`signature_data`, `qr_data`, `print_count`) are filled in by the **Entrust machine**, and the bridge never touches them.
 
 ---
 
@@ -734,6 +854,19 @@ Copy the entire `publish/` folder to the target PC, e.g. `C:\OpenEdgeBridge\`.
 | `Sync:IntervalSeconds` | How often the sync loop runs (default: 10s) |
 | `Sync:FullSyncIntervalMinutes` | Minutes between periodic FULL syncs. `0` = disabled (recommended; OpenEdge rows are write-once, so only the first run seeds). Positive value (e.g., `60`) = re-read the whole table that often, catching in-place edits if they ever happen |
 
+### Test the executable manually
+
+Before registering the service, open PowerShell and run the published executable from its deployment folder:
+
+```powershell
+Set-Location C:\OpenEdgeBridge
+.\OpenEdgeBridge.exe
+```
+
+The bridge runs in the foreground and writes startup, connection, and sync errors to the PowerShell window. Confirm that rows appear in `instantid_bridge.id_print`, then press **Ctrl+C** to stop it.
+
+> Stop the manual test before starting the Windows service so both processes do not run at the same time.
+
 ### 7. Install as a Windows Service
 
 Open **PowerShell as Administrator** and run:
@@ -786,7 +919,7 @@ sc delete OpenEdgeBridge
 |---------|-------------|-----|
 | Service starts then stops immediately | Wrong DSN name or credentials | Test the ODBC DSN in ODBC Administrator with **Test Connect** |
 | "MySQL connection string not found" | `appsettings.json` not in same folder as `.exe` | Ensure `appsettings.json` is in `C:\OpenEdgeBridge\` |
-| Duplicate rows in MySQL | Missing UNIQUE index | Run the `ALTER TABLE ... ADD UNIQUE INDEX` SQL above |
+| Duplicate rows in MySQL | Missing UNIQUE index on `trans_no` | Run the `ALTER TABLE ... ADD UNIQUE INDEX idx_trans_no (trans_no)` SQL above |
 | OpenEdge ODBC driver not found | Wrong bitness (32 vs 64) | Use `odbcad32.exe` (64-bit), not the 32-bit one in SysWOW64 |
 | `Failure getting schema read lock (12138)` | SQL engine not initialized for database | 1. Verify `-ServerType Both` or `-ServerType SQL` on proserve<br>2. In sqlexp run: `UPDATE TABLE STATISTICS AND INDEX STATISTICS AND ALL COLUMN STATISTICS;`<br>3. If still failing, restart DB: `proshut` then `proserve` with `-SQLTrc 3` |
 | MySQL not accessible from Entrust | MySQL not running or wrong port | Check XAMPP Control Panel; MySQL must be **Started** |
@@ -824,12 +957,12 @@ The interval is an **idle pause between cycles** (work → wait → work), not a
 
 | Value | Behavior |
 |-------|----------|
-| `0` (default, recommended) | FULL sync only on the **first run** (seeds MySQL). All later cycles are INCREMENTAL (`batch-no` > highest in MySQL). Restarts never re-trigger a full sync. |
+| `0` (default, recommended) | FULL sync only on the **first run** (seeds MySQL). All later cycles are INCREMENTAL (`trans-no` > highest in MySQL). Restarts never re-trigger a full sync. |
 | Positive (e.g., `60`) | Additionally re-reads the entire table when that many minutes have passed since the last full sync. Only needed if OpenEdge rows can be edited in place. |
 
 **How the decision works:** after every successful FULL sync the bridge writes the completion time to `sync_state.last_full_sync_utc` in MySQL. On each cycle it compares that timestamp against `FullSyncIntervalMinutes`. If MySQL is unreachable at startup, the bridge falls back to FULL — the safe default that guarantees a complete copy.
 
-**Why `0` is right for this deployment:** OpenEdge `id-print` data is batch-based and write-once — new records always arrive in new batches (higher `batch-no`), and existing rows are not edited. The incremental query therefore sees every new record, and a periodic full re-read only wastes database load on a table that never changes. If the provider ever starts correcting existing rows, set this to `60` (hourly refresh) or similar.
+**Why `0` is right for this deployment:** OpenEdge `id-print` data is transaction-based and write-once — new records always carry a newer `trans-no` (RTC rows arrive in batches, OSCA/senior rows one at a time), and existing rows are not edited. The incremental query (trans-no greater than the current max in MySQL) therefore sees every new record of both kinds, and a periodic full re-read only wastes database load on a table that never changes. If the provider ever starts correcting existing rows, set this to `60` (hourly refresh) or similar.
 
 ---
 

@@ -1,7 +1,7 @@
 # OpenEdge Bridge — Client-Side Setup Guide
 
-**Version:** 1.2
-**Date:** September 4, 2026
+**Version:** 1.3
+**Date:** September 7, 2026
 **Audience:** Client IT / personnel deploying the ID-printing system on their Windows PC.
 
 ---
@@ -155,6 +155,9 @@ USE instantid_bridge;
 ```sql
 CREATE TABLE IF NOT EXISTS id_print (
     id             INT           NOT NULL AUTO_INCREMENT,
+    trans_no       BIGINT        NULL        COMMENT 'Universal transaction no (OpenEdge PRIMARY key id-idx)',
+    trans_date     DATE          NULL        COMMENT 'Transaction date',
+    trans_time     VARCHAR(30)   NULL        COMMENT 'Transaction time',
     batch_no       INT           NULL,
     batch_date     DATE          NULL,
     app_no         INT           NULL,
@@ -162,7 +165,7 @@ CREATE TABLE IF NOT EXISTS id_print (
     cp_no          VARCHAR(15)   NULL,
     fullname       VARCHAR(65)   NULL,
     hcp_fullname   VARCHAR(65)   NULL,
-    address        VARCHAR(65)   NULL,
+    address        VARCHAR(100)  NULL,
     hcp_cpno       VARCHAR(15)   NULL,
     lname          VARCHAR(55)   NULL,
     fname          VARCHAR(55)   NULL,
@@ -183,14 +186,20 @@ CREATE TABLE IF NOT EXISTS id_print (
     photo          LONGBLOB      NULL,
     gender         INT           NULL        COMMENT '1 = Female, 2 = Male',
     date_issued    DATE          NULL,
-    id_no          INT           NULL,
+    id_no          VARCHAR(25)   NULL,
     year_applied   INT           NULL,
     control_no     INT           NULL,
+    id_type        INT           NULL        COMMENT '1 = New, 2 = ReIssue/Reprint',
+    pvc_no         VARCHAR(35)   NULL,
+    age            INT           NULL,
     signature_data LONGBLOB      NULL        COMMENT 'Signature image; written by Entrust Instant ID (MySQL only)',
     qr_data        LONGBLOB      NULL        COMMENT 'QR code image; written by Entrust Instant ID (MySQL only)',
     print_count    INT           NULL        COMMENT 'Incremented by Instant ID; triggers printed=yes back-sync',
     PRIMARY KEY (id),
-    UNIQUE INDEX idx_app_no (app_no)
+    UNIQUE INDEX idx_trans_no (trans_no),
+    INDEX idx_rtc_key (tran_type, batch_no, app_no),
+    INDEX idx_osca_key (tran_type, control_no, id_no),
+    INDEX idx_print_sync (printed, print_count, trans_no)
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
@@ -203,19 +212,32 @@ CREATE TABLE IF NOT EXISTS id_print (
 >
 > ```sql
 > ALTER TABLE id_print
+>   MODIFY COLUMN address      VARCHAR(100) NULL,
 >   CHANGE COLUMN id_type tran_type INT NULL COMMENT '1 = for RTC, 2 = senior',
 >   ADD COLUMN sfx          VARCHAR(15) NULL AFTER id_code,
 >   ADD COLUMN photo        LONGBLOB    NULL AFTER sfx,
 >   ADD COLUMN gender       INT         NULL COMMENT '1 = Female, 2 = Male' AFTER photo,
 >   ADD COLUMN date_issued  DATE        NULL AFTER gender,
->   ADD COLUMN id_no        INT         NULL AFTER date_issued,
+>   MODIFY COLUMN id_no     VARCHAR(25) NULL AFTER gender,
 >   ADD COLUMN year_applied INT         NULL AFTER id_no,
 >   ADD COLUMN control_no   INT         NULL AFTER year_applied,
->   ADD COLUMN signature_data LONGBLOB  NULL AFTER control_no,
->   ADD COLUMN qr_data        LONGBLOB  NULL AFTER signature_data;
+>   ADD COLUMN id_type      INT         NULL COMMENT '1 = New, 2 = ReIssue/Reprint' AFTER control_no,
+>   ADD COLUMN pvc_no       VARCHAR(35) NULL AFTER id_type,
+>   ADD COLUMN age          INT         NULL AFTER pvc_no,
+>   ADD COLUMN trans_no     BIGINT      NULL AFTER age,
+>   ADD COLUMN trans_date   DATE        NULL AFTER trans_no,
+>   ADD COLUMN trans_time   VARCHAR(30) NULL AFTER trans_date,
+>   ADD COLUMN signature_data LONGBLOB  NULL AFTER trans_time,
+>   ADD COLUMN qr_data        LONGBLOB  NULL AFTER signature_data,
+>   DROP INDEX idx_app_no,
+>   DROP INDEX idx_batch_no,
+>   ADD UNIQUE INDEX idx_trans_no (trans_no),
+>   ADD INDEX idx_rtc_key (tran_type, batch_no, app_no),
+>   ADD INDEX idx_osca_key (tran_type, control_no, id_no),
+>   ADD INDEX idx_print_sync (printed, print_count, trans_no);
 > ```
 >
-> (If you already had `signature_data` and `qr_data`, just run the `CHANGE COLUMN id_type` line and the first seven `ADD COLUMN` lines.)
+> (If you already had `signature_data` and `qr_data`, just run the `CHANGE COLUMN id_type` line, the seven `ADD COLUMN` lines before them, the three `id_type`/`pvc_no`/`age`/`trans_no`/`trans_date`/`trans_time` lines, and the `DROP INDEX`/`ADD INDEX` lines.)
 
 > ✅ **Done when:** `instantid_bridge` database and `id_print` table appear in phpMyAdmin.
 
@@ -276,6 +298,19 @@ CREATE TABLE IF NOT EXISTS id_print (
 
 > ✅ **Done when:** `C:\OpenEdgeBridge\` contains `OpenEdgeBridge.exe` and an edited `appsettings.json`.
 
+### Test the bridge manually in PowerShell
+
+Before installing the Windows service, run the executable manually to verify the configuration and database connections:
+
+```powershell
+Set-Location C:\OpenEdgeBridge
+.\OpenEdgeBridge.exe
+```
+
+Keep the PowerShell window open while testing. The bridge runs in the foreground and displays connection or sync errors in the console. Confirm that rows appear in `instantid_bridge.id_print`, then press **Ctrl+C** to stop the bridge.
+
+> ⚠️ Stop the manual test with **Ctrl+C** before starting the Windows service, otherwise both processes may run at the same time.
+
 ---
 
 ## Step 7 — Install the Bridge as a Windows Service
@@ -311,7 +346,7 @@ Get-Service OpenEdgeBridge
 This is what the bridge does behind the scenes — you normally never have to think about it:
 
 1. **First time it runs**, it copies **everything** from the OpenEdge `id-print` table into your local MySQL (`id_print`). This can take a few minutes if there are many records — that is normal.
-2. **After that**, every 10 seconds it only asks OpenEdge for **new batches** (new groups of applications) and copies just those. Existing rows are not re-copied.
+2. **After that**, every 10 seconds it only asks OpenEdge for **new transactions** (rows whose `trans-no` is newer than the highest it already has) and copies just those. `trans-no` is on every row — RTC batches and OSCA/senior single records alike — so both kinds are picked up. Existing rows are not re-copied.
 3. The bridge remembers this in a small bookkeeping table (`sync_state`) inside MySQL — so **restarting the PC or the service never causes another full copy**. It picks up right where it left off.
 4. Separately, it checks every 10 seconds whether Entrust Instant ID has printed anything (`print_count`), and marks those records as `printed = yes` back in OpenEdge.
 
@@ -351,7 +386,7 @@ Get-Service OpenEdgeBridge          # check status
 | "Driver not found" / no DSN listed | Wrong bitness (32-bit vs 64-bit) | Always use **`odbcad32.exe`** (64-bit) — NOT the 32-bit one in `C:\Windows\SysWOW64` |
 | No rows in `id_print` | MySQL not running, or bridge not running | Check XAMPP Control Panel → MySQL must be **green**; check `Get-Service OpenEdgeBridge` |
 | "MySQL connection string not found" | `appsettings.json` missing or not beside the `.exe` | Confirm `appsettings.json` is in `C:\OpenEdgeBridge\` and has valid JSON |
-| Duplicate rows in MySQL | Missing UNIQUE index on `app_no` | Run: `ALTER TABLE id_print ADD UNIQUE INDEX idx_app_no (app_no);` |
+| Duplicate rows in MySQL | Missing UNIQUE index on `trans_no` | Run: `ALTER TABLE id_print ADD UNIQUE INDEX idx_trans_no (trans_no);` |
 | Entrust can't connect to MySQL | MySQL not started, or wrong credentials in Entrust | Check XAMPP (MySQL green); re-check Entrust host `localhost`, port `3306`, database `instantid_bridge` |
 | `printed` never becomes `yes` in OpenEdge | Entrust isn't incrementing `print_count` | Check Entrust is configured to the `id_print` table and is incrementing `print_count` after printing |
 | Bridge keeps copying all records on every start | MySQL unreachable at startup, or `sync_state` table missing | The bridge falls back to a full copy when it can't read its state. Check XAMPP MySQL is **green** and that a `sync_state` table exists in `instantid_bridge` (the bridge creates it automatically after the first successful run) |
@@ -365,7 +400,7 @@ Get-Service OpenEdgeBridge          # check status
 - [ ] System DSN `OpenEdgeInstantID` created and **Test Connect** succeeds
 - [ ] XAMPP installed, MySQL **running**, `root` password set
 - [ ] `instantid_bridge` database created
-- [ ] `id_print` table created (with `tran_type`, `sfx`, `photo`, `gender`, `date_issued`, `id_no`, `year_applied`, `control_no`, `signature_data`, `qr_data`, `print_count`, and UNIQUE `app_no`)
+- [ ] `id_print` table created (with `trans_no`, `tran_type`, `sfx`, `photo`, `gender`, `date_issued`, `id_no`, `year_applied`, `control_no`, `id_type`, `pvc_no`, `age`, `trans_date`, `trans_time`, `signature_data`, `qr_data`, `print_count`, and UNIQUE `trans_no`)
 - [ ] `sync_state` table exists in MySQL (auto-created by the bridge after the first run — verify in phpMyAdmin)
 - [ ] `mysql-connector-j-8.0.33.jar` placed in Entrust's `lib/` folder
 - [ ] Entrust configured → `localhost:3306` / `instantid_bridge` / `id_print`
