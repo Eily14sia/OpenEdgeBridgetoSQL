@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenEdgeBridge.Models;
 using OpenEdgeBridge.Repositories;
 using OpenEdgeBridge.Services;
 
@@ -58,7 +59,11 @@ public class Program
         var syncService = host.Services.GetRequiredService<SyncService>();
 
         int intervalSeconds = configuration.GetValue<int>("Sync:IntervalSeconds", 10);
+        var clientKind = IdPrintKindExtensions.ParseClient(configuration.GetValue<string>("Sync:Client"));
         logger.LogInformation("OpenEdge Bridge started. Sync interval: {Interval}s", intervalSeconds);
+        logger.LogInformation(
+            "Client filter (Sync:Client): {Client} — only this client's id-print rows are synced.",
+            clientKind.Describe());
         logger.LogInformation("Press Ctrl+C to stop.");
 
         // -----------------------------------------------------------------

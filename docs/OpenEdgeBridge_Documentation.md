@@ -99,7 +99,7 @@ OpenEdge "id-print" ──► C# Service ──► MySQL id_print table
        (read)               (sync loop)         (upsert)
 ```
 
-All 37 fields from the `id-print` table are synced, including:
+By default all 37 fields from the `id-print` table are synced, including:
 - `trans-no`, `trans-date`, `trans-time`
 - `batch-no`, `batch-date`, `app-no`, `dob`
 - `cp-no`, `fullname`, `hcp-fullname`, `address`, `hcp-cpno`
@@ -115,6 +115,26 @@ The table holds **two ID kinds side by side**, distinguished by `tran-type`:
 - `tran-type` **2 = OSCA/senior** → identified by `control-no` + `id-no` (single row, not batched)
 
 `trans-no` is the **PRIMARY index** (`id-idx`) in OpenEdge and is present on **every** row of both kinds, so it is the universal key used by the bridge for fetching, deduplication, and the printed back-sync.
+
+#### Client Filter — `Sync:Client` (RTC vs. OSCA)
+
+A single deployment can be pointed at **one client** so it only handles that client's IDs. Set `Sync:Client` in `appsettings.json`, or override it with the `Sync__Client` environment variable:
+
+| `Sync:Client` | Rows fetched from OpenEdge | Columns projected | Rows written to MySQL |
+|---|---|---|---|
+| `Both` (default) | `tran-type` 1 **and** 2 | all 37 | both kinds |
+| `RTC` | only `tran-type` = 1 | RTC fields only | RTC only |
+| `OSCA` | only `tran-type` = 2 | OSCA fields only | OSCA only |
+
+When a single client is selected the bridge:
+
+- adds `WHERE "tran-type" = ?` to the OpenEdge read, so the other kind is never fetched;
+- projects **only that client's columns** (per the RTC/OSCA field lists above) — an OSCA read omits `batch-no`, `batch-date`, `app-no`, `page-no`, `book-no`, `series-no`, `spa-docno`, `spa-atty`, `spa-dt-issue`, `hcp-cpno`, `hcp-fullname`, `id-code`; an RTC read omits `age`, `year-applied`, `date-issued`, `control-no`, `id-no`;
+- scopes the incremental watermark (`MAX(trans_no)`) **and** the printed back-sync to that `tran-type`, so a higher `trans-no` belonging to the other kind can never mask un-synced rows;
+- skips (with a warning) any row whose `tran-type` doesn't match, so **only the configured client is ever created in MySQL**;
+- writes **only the columns that belong to that client**, so a per-client `id_print` table needs no unrelated columns. The bridge verifies this once per run and logs an error (skipping the cycle) if the table and `Sync:Client` disagree.
+
+`Sync:Client` accepts `Both`, `RTC`, `OSCA` (case-insensitive; also `SENIOR`/`2` for OSCA, `1` for RTC). Blank or unrecognised values fall back to `Both`.
 
 Runs every N seconds (configurable in `appsettings.json`). Uses **check-then-update** upserts (SELECT by `trans_no`, then UPDATE or INSERT) to avoid duplicates. `print_count` is only inserted on first sync; subsequent updates do NOT overwrite it (Instant ID manages `print_count`).
 
@@ -133,16 +153,30 @@ OpenEdge `id-print` records are **write-once** — new data arrives only as new 
 
 If `Sync:FullSyncIntervalMinutes` is set to a positive value (e.g., `60`), a full sync also runs when that many minutes have elapsed since the last successful full sync — useful only if OpenEdge rows ever start getting edited in place.
 
-> **Note:** `signature_data` and `qr_data` are **not** part of this sync — they are MySQL-only columns populated by Entrust Instant ID and never touched by the bridge (see [Database Tables](#database-tables)).
+> **Note:** `signature_data`, `qr_data`, and `fingerprint_data` are **not** part of this sync — they are MySQL-only columns populated by Entrust Instant ID and never touched by the bridge (see [Database Tables](#database-tables)).
 
 ### MySQL → OpenEdge (Printed Back-Sync)
 
 ```
 MySQL id_print ──────► C# Service ──────► OpenEdge "id-print"
- (print_count > 0)    (check + mark)       (SET printed = yes)
+ (print_count > 0)    (check + mark)       (SET printed = 1 + fields below)
 ```
 
-When Instant ID increments `print_count > 0` on a record, the bridge detects it and sets `printed = yes` in the corresponding OpenEdge record. It addresses OpenEdge rows by `trans-no` (not `app-no`), because OSCA/senior rows have no `app-no`.
+When Instant ID increments `print_count > 0` on a record, the bridge detects it and, for the matching OpenEdge row (addressed by `trans-no` — not `app-no`, because OSCA/senior rows have no `app-no`), it writes back:
+
+| OpenEdge column | Written when |
+|---|---|
+| `"printed"` | always — set to `1` |
+| `"printed-dt"` | always — the **bridge machine's local date** at back-sync time |
+| `"printed-tm"` | always — the **bridge machine's local time** (`HH:mm:ss`) at back-sync time |
+| `"photo"` | MySQL `photo` has content |
+| `"image-data"` | MySQL `image_data` has content |
+
+The printed date/time are **always taken from the machine running the bridge**, not from whatever Instant ID wrote into MySQL. The `printed_dt`/`printed_tm` values Instant ID stamps are ignored and overwritten: once `print_count` reaches `1`, both MySQL (`printed_dt`/`printed_tm`) and OpenEdge (`"printed-dt"`/`"printed-tm"`) are set to the bridge machine's local time so the two stores agree. `photo` / `image-data` are written only when they carry content, so they never blank out what OpenEdge already holds. `signature_data`, `qr_data` and `fingerprint_data` are MySQL-only and have no OpenEdge counterpart, so they are never pushed back.
+
+> **`"PVC-No"` is never written back.** In MySQL `pvc_no` always holds a value, so pushing it would overwrite OpenEdge's `PVC-No` on every back-sync. It remains a strictly OpenEdge → MySQL field.
+
+> This is the **only** MySQL → OpenEdge write in the bridge. All other columns flow one way, OpenEdge → MySQL.
 
 ---
 
@@ -591,7 +625,9 @@ CREATE TABLE "id-print" (
 > `VARBINARY(110)` stores the raw image binary data (MAX-WIDTH 110 from the schema).  
 > `BLOB` stores the cardholder photo (LOB-SIZE 100M from the schema).
 
-#### MySQL — CREATE TABLE
+#### MySQL — CREATE TABLE (combined — `Sync:Client = Both`)
+
+> A single-client deployment can instead create a slimmer table containing only that client's columns — see **Per-Client Tables** below.
 
 ```sql
 CREATE TABLE IF NOT EXISTS id_print (
@@ -635,6 +671,7 @@ CREATE TABLE IF NOT EXISTS id_print (
     age            INT           NULL,
     signature_data LONGBLOB      NULL        COMMENT 'Signature image; written by Entrust Instant ID (MySQL only, NOT synced from OpenEdge)',
     qr_data        LONGBLOB      NULL        COMMENT 'QR code image; written by Entrust Instant ID (MySQL only, NOT synced from OpenEdge)',
+    fingerprint_data LONGBLOB    NULL        COMMENT 'Fingerprint image (OSCA/senior only); written by Entrust Instant ID (MySQL only, NOT synced from OpenEdge)',
     print_count    INT           NULL        COMMENT 'Incremented by Instant ID; triggers printed=yes back-sync',
     PRIMARY KEY (id),
     UNIQUE INDEX idx_trans_no (trans_no),
@@ -648,7 +685,7 @@ CREATE TABLE IF NOT EXISTS id_print (
 
 > **Note:** `id` is an internal auto-increment primary key. `trans_no` is the **universal business key** — it mirrors OpenEdge's PRIMARY index (`id-idx`) and exists on **every** row, both RTC (`tran-type` 1) and OSCA/senior (`tran-type` 2) alike. The bridge uses it for deduplication (it SELECTs by `trans_no` first, then UPDATEs or INSERTs as needed). Unlike `batch_no`/`app_no` — which are NULL on OSCA rows — `trans_no` is never NULL, which is why it is the sync watermark too. `idx_rtc_key` and `idx_osca_key` are just lookup indexes for the type-specific business keys.
 
-> **MySQL-only columns (`signature_data`, `qr_data`):** These store the cardholder's signature and QR-code images and are **MySQL only**. They do **not** exist in the OpenEdge `"id-print"` table and are **never read from or written back to OpenEdge**. Entrust Instant ID populates them directly in MySQL. The bridge deliberately leaves them untouched — it does not include them in its INSERT/UPDATE, so syncing from OpenEdge will never overwrite them.
+> **MySQL-only columns (`signature_data`, `qr_data`, `fingerprint_data`):** These store the cardholder's signature, QR-code, and fingerprint images and are **MySQL only**. They do **not** exist in the OpenEdge `"id-print"` table and are **never read from or written back to OpenEdge**. Entrust Instant ID populates them directly in MySQL. The bridge deliberately leaves them untouched — it does not include them in its INSERT/UPDATE, so syncing from OpenEdge will never overwrite them. `signature_data` and `qr_data` are used by **both** RTC and OSCA; `fingerprint_data` is used by **OSCA/senior** only.
 
 > **Already have the table?** If you created `id_print` before these columns existed, add them with:
 > ```sql
@@ -671,6 +708,7 @@ CREATE TABLE IF NOT EXISTS id_print (
 >   ADD COLUMN trans_time   VARCHAR(30) NULL AFTER trans_date,
 >   ADD COLUMN signature_data LONGBLOB  NULL AFTER trans_time,
 >   ADD COLUMN qr_data        LONGBLOB  NULL AFTER signature_data,
+>   ADD COLUMN fingerprint_data LONGBLOB NULL AFTER qr_data,
 >   DROP INDEX idx_app_no,
 >   DROP INDEX idx_batch_no,
 >   ADD UNIQUE INDEX idx_trans_no (trans_no),
@@ -680,6 +718,106 @@ CREATE TABLE IF NOT EXISTS id_print (
 > ```
 >
 > > **Schema update (2026-09-08):** The OpenEdge `.df` now has `trans-no` (int64) as its PRIMARY index (`id-idx`) and adds `id-type`, `PVC-No`, `age`, `trans-date`, `trans-time`. `trans-no` is the universal business key and incremental watermark (present on both RTC and OSCA rows, unlike `batch-no`/`app_no` which are NULL on OSCA rows). Reload the updated `.df` (Step 0-E), then run the ALTER above on MySQL.
+
+#### MySQL — Per-Client Tables (`Sync:Client = RTC` or `OSCA`)
+
+For a single-client deployment, create `id_print` with **only that client's columns** — no unrelated columns. The bridge writes only the columns that belong to the configured client, so a table built from either script below works. (The combined table above works too; its extra columns simply stay `NULL`.) If the table and `Sync:Client` disagree, the bridge logs an error naming the missing columns and skips the cycle — it checks once per run.
+
+The Entrust-only image columns (`signature_data`, `qr_data`, and `fingerprint_data` for OSCA) are never written by the bridge; they exist only for Entrust Instant ID.
+
+**RTC only — `Sync:Client = "RTC"`**
+
+```sql
+CREATE TABLE IF NOT EXISTS id_print (
+    id             INT           NOT NULL AUTO_INCREMENT,
+    trans_no       BIGINT        NULL        COMMENT 'Universal transaction no (OpenEdge PRIMARY key id-idx)',
+    trans_date     DATE          NULL        COMMENT 'Transaction date',
+    trans_time     VARCHAR(30)   NULL        COMMENT 'Transaction time',
+    batch_no       INT           NULL,
+    batch_date     DATE          NULL,
+    app_no         INT           NULL,
+    dob            DATE          NULL,
+    cp_no          VARCHAR(15)   NULL,
+    fullname       VARCHAR(65)   NULL,
+    hcp_fullname   VARCHAR(65)   NULL,
+    address        VARCHAR(100)  NULL,
+    hcp_cpno       VARCHAR(15)   NULL,
+    lname          VARCHAR(55)   NULL,
+    fname          VARCHAR(55)   NULL,
+    mname          VARCHAR(55)   NULL,
+    spa_docno      VARCHAR(25)   NULL,
+    page_no        VARCHAR(20)   NULL,
+    book_no        VARCHAR(20)   NULL,
+    series_no      VARCHAR(20)   NULL,
+    spa_atty       VARCHAR(65)   NULL,
+    spa_dt_issue   DATE          NULL,
+    printed        VARCHAR(3)    NULL        COMMENT 'yes / no (matches OpenEdge LOGICAL FORMAT)',
+    printed_dt     DATE          NULL,
+    printed_tm     VARCHAR(35)   NULL,
+    tran_type      INT           NULL        COMMENT '1 = RTC',
+    image_data     LONGBLOB      NULL,
+    id_code        INT           NULL,
+    sfx            VARCHAR(15)   NULL,
+    photo          LONGBLOB      NULL,
+    gender         INT           NULL        COMMENT '1 = Female, 2 = Male',
+    id_type        INT           NULL        COMMENT '1 = New, 2 = ReIssue/Reprint',
+    pvc_no         VARCHAR(35)   NULL,
+    signature_data LONGBLOB      NULL        COMMENT 'Signature image; written by Entrust Instant ID (MySQL only)',
+    qr_data        LONGBLOB      NULL        COMMENT 'QR code image; written by Entrust Instant ID (MySQL only)',
+    print_count    INT           NULL        COMMENT 'Incremented by Instant ID; triggers printed=yes back-sync',
+    PRIMARY KEY (id),
+    UNIQUE INDEX idx_trans_no (trans_no),
+    INDEX idx_rtc_key (tran_type, batch_no, app_no),
+    INDEX idx_print_sync (printed, print_count, trans_no)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+```
+
+**OSCA / senior only — `Sync:Client = "OSCA"`**
+
+```sql
+CREATE TABLE IF NOT EXISTS id_print (
+    id               INT           NOT NULL AUTO_INCREMENT,
+    trans_no         BIGINT        NULL        COMMENT 'Universal transaction no (OpenEdge PRIMARY key id-idx)',
+    trans_date       DATE          NULL        COMMENT 'Transaction date',
+    trans_time       VARCHAR(30)   NULL        COMMENT 'Transaction time',
+    dob              DATE          NULL,
+    cp_no            VARCHAR(15)   NULL,
+    fullname         VARCHAR(65)   NULL,
+    address          VARCHAR(100)  NULL,
+    lname            VARCHAR(55)   NULL,
+    fname            VARCHAR(55)   NULL,
+    mname            VARCHAR(55)   NULL,
+    sfx              VARCHAR(15)   NULL,
+    printed          VARCHAR(3)    NULL        COMMENT 'yes / no (matches OpenEdge LOGICAL FORMAT)',
+    printed_dt       DATE          NULL,
+    printed_tm       VARCHAR(35)   NULL,
+    tran_type        INT           NULL        COMMENT '2 = OSCA/senior',
+    image_data       LONGBLOB      NULL,
+    photo            LONGBLOB      NULL,
+    gender           INT           NULL        COMMENT '1 = Female, 2 = Male',
+    id_type          INT           NULL        COMMENT '1 = New, 2 = ReIssue/Reprint',
+    pvc_no           VARCHAR(35)   NULL,
+    age              INT           NULL,
+    control_no       INT           NULL,
+    date_issued      DATE          NULL,
+    id_no            VARCHAR(25)   NULL,
+    year_applied     INT           NULL,
+    signature_data   LONGBLOB      NULL        COMMENT 'Signature image; written by Entrust Instant ID (MySQL only)',
+    qr_data          LONGBLOB      NULL        COMMENT 'QR code image; written by Entrust Instant ID (MySQL only)',
+    fingerprint_data LONGBLOB      NULL        COMMENT 'Fingerprint image (OSCA/senior only); written by Entrust Instant ID (MySQL only)',
+    print_count      INT           NULL        COMMENT 'Incremented by Instant ID; triggers printed=yes back-sync',
+    PRIMARY KEY (id),
+    UNIQUE INDEX idx_trans_no (trans_no),
+    INDEX idx_osca_key (tran_type, control_no, id_no),
+    INDEX idx_print_sync (printed, print_count, trans_no)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+```
+
+> **Already have a combined table?** It keeps working with any `Sync:Client` value — the columns that don't belong to the selected client are simply never written (they stay `NULL`). No migration is required unless you want the slimmer schema.
 
 ### `sync_state` (bridge state table — MySQL only, auto-created)
 
@@ -695,7 +833,11 @@ CREATE TABLE IF NOT EXISTS sync_state (
 
 | Key | Meaning |
 |-----|---------|
-| `last_full_sync_utc` | UTC timestamp of the last successful FULL sync. Used to decide whether the next cycle can be INCREMENTAL. Survives restarts, so a reboot never forces a redundant full sync. |
+| `last_full_sync_utc` | UTC timestamp of the last successful FULL sync when `Sync:Client` is `Both`. Used to decide whether the next cycle can be INCREMENTAL. Survives restarts, so a reboot never forces a redundant full sync. |
+| `last_full_sync_utc_rtc` | Same, for a deployment with `Sync:Client = RTC`. |
+| `last_full_sync_utc_osca` | Same, for a deployment with `Sync:Client = OSCA`. |
+
+> The full-sync timestamp key is **per client**, so switching `Sync:Client` on an existing PC seeds a fresh FULL sync for the newly selected client (the bridge re-reads that client's rows and upserts them; separate keys mean one client's state never hides another's).
 
 ### Column Comparison — Plain English
 
@@ -742,10 +884,11 @@ Think of each row as **one person's ID-card application folder**. The columns ar
 | `printed-tm` | `printed_tm` | **Time it was printed** |
 | — | `signature_data` | **Person's signature picture** — *MySQL only*. Not in OpenEdge, not synced back. Entrust fills this in |
 | — | `qr_data` | **QR code picture** — *MySQL only*. Not in OpenEdge, not synced back. Entrust fills this in |
+| — | `fingerprint_data` | **Fingerprint picture** — *MySQL only*. OSCA/senior only. Not in OpenEdge, not synced back. Entrust fills this in |
 | — | `print_count` | **How many times it got printed** — *MySQL only*. Instant ID counts this; it's never overwritten by the bridge |
 | — | `id` | **Row number** — MySQL's own internal counter. Not business data, ignore it |
 
-**30-second summary:** The bridge copies the person's details (name, birthdate, address, photo, etc.) **from OpenEdge → MySQL**, like photocopying the folder. `trans_no` is the **matchmaker** — it exists on every row (RTC and OSCA/senior alike) and makes sure updates land on the right row. The three columns that exist **only in MySQL** (`signature_data`, `qr_data`, `print_count`) are filled in by the **Entrust machine**, and the bridge never touches them.
+**30-second summary:** The bridge copies the person's details (name, birthdate, address, photo, etc.) **from OpenEdge → MySQL**, like photocopying the folder. `trans_no` is the **matchmaker** — it exists on every row (RTC and OSCA/senior alike) and makes sure updates land on the right row. With `Sync:Client` you can restrict a deployment to a single client (`RTC` or `OSCA`). The four columns that exist **only in MySQL** (`signature_data`, `qr_data`, `fingerprint_data`, `print_count`) are filled in by the **Entrust machine**, and the bridge never touches them.
 
 ---
 
@@ -842,7 +985,8 @@ Copy the entire `publish/` folder to the target PC, e.g. `C:\OpenEdgeBridge\`.
   },
   "Sync": {
     "IntervalSeconds": 10,
-    "FullSyncIntervalMinutes": 0
+    "FullSyncIntervalMinutes": 0,
+    "Client": "Both"
   }
 }
 ```
@@ -853,6 +997,7 @@ Copy the entire `publish/` folder to the target PC, e.g. `C:\OpenEdgeBridge\`.
 | `MySql` | MySQL server, database, user, and password |
 | `Sync:IntervalSeconds` | How often the sync loop runs (default: 10s) |
 | `Sync:FullSyncIntervalMinutes` | Minutes between periodic FULL syncs. `0` = disabled (recommended; OpenEdge rows are write-once, so only the first run seeds). Positive value (e.g., `60`) = re-read the whole table that often, catching in-place edits if they ever happen |
+| `Sync:Client` | Which client this deployment syncs: `Both` (default), `RTC`, or `OSCA`. `RTC`/`OSCA` fetch and write only that kind's rows (see [Client Filter](#client-filter--syncclient-rtc-vs-osca)). Also settable via the `Sync__Client` environment variable |
 
 ### Test the executable manually
 
@@ -963,6 +1108,22 @@ The interval is an **idle pause between cycles** (work → wait → work), not a
 **How the decision works:** after every successful FULL sync the bridge writes the completion time to `sync_state.last_full_sync_utc` in MySQL. On each cycle it compares that timestamp against `FullSyncIntervalMinutes`. If MySQL is unreachable at startup, the bridge falls back to FULL — the safe default that guarantees a complete copy.
 
 **Why `0` is right for this deployment:** OpenEdge `id-print` data is transaction-based and write-once — new records always carry a newer `trans-no` (RTC rows arrive in batches, OSCA/senior rows one at a time), and existing rows are not edited. The incremental query (trans-no greater than the current max in MySQL) therefore sees every new record of both kinds, and a periodic full re-read only wastes database load on a table that never changes. If the provider ever starts correcting existing rows, set this to `60` (hourly refresh) or similar.
+
+### `Client` — which client this deployment syncs
+
+```json
+"Sync": {
+  "Client": "Both"
+}
+```
+
+| Value | Behavior |
+|-------|----------|
+| `Both` (default) | Syncs both RTC (`tran-type` 1) and OSCA/senior (`tran-type` 2) rows. |
+| `RTC` | Fetches only `tran-type` = 1 rows, projects RTC columns only, and writes RTC rows only. |
+| `OSCA` | Fetches only `tran-type` = 2 rows, projects OSCA columns only, and writes OSCA rows only. |
+
+Set this to the client this PC is deployed for. It can also be supplied through the environment as `Sync__Client` (double underscore instead of the colon). Blank or unrecognised values fall back to `Both`. See [Client Filter](#client-filter--syncclient-rtc-vs-osca) for details.
 
 ---
 

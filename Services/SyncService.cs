@@ -22,6 +22,21 @@ public class SyncService
     /// </summary>
     private readonly int _fullSyncIntervalMinutes;
 
+    /// <summary>
+    /// Which client's rows this deployment syncs (Sync:Client in appsettings.json
+    /// — "Both" | "RTC" | "OSCA"; overridable with the Sync__Client environment
+    /// variable). Restricts the OpenEdge read, the MySQL watermark, the upsert,
+    /// and the printed back-sync to a single ID kind.
+    /// </summary>
+    private readonly IdPrintKind _clientKind;
+
+    /// <summary>
+    /// Set once the MySQL `id_print` table has been confirmed to contain every
+    /// column required for <see cref="_clientKind"/>. Avoids re-querying the
+    /// schema on every cycle.
+    /// </summary>
+    private bool _schemaVerified;
+
     public SyncService(
         OpenEdgeRepository openEdgeRepo,
         MySqlRepository mySqlRepo,
@@ -32,10 +47,16 @@ public class SyncService
         _mySqlRepo = mySqlRepo;
         _logger = logger;
         _fullSyncIntervalMinutes = configuration.GetValue<int>("Sync:FullSyncIntervalMinutes", 10);
+        _clientKind = IdPrintKindExtensions.ParseClient(configuration.GetValue<string>("Sync:Client"));
     }
 
     public async Task SyncIdPrintsAsync()
     {
+        // Fail fast with a clear message if the MySQL table doesn't match the
+        // configured client (see Sync:Client). Checked once per process.
+        if (!await VerifySchemaOnceAsync())
+            return;
+
         // Determine whether this is a full or incremental sync.
         // FULL runs when the persisted last-full-sync timestamp is missing
         // or older than Sync:FullSyncIntervalMinutes. Restarting the service
@@ -46,7 +67,7 @@ public class SyncService
         DateTime? lastFullSyncUtc = null;
         try
         {
-            lastFullSyncUtc = await _mySqlRepo.GetLastFullSyncUtcAsync();
+            lastFullSyncUtc = await _mySqlRepo.GetLastFullSyncUtcAsync(_clientKind);
         }
         catch (Exception ex)
         {
@@ -63,36 +84,56 @@ public class SyncService
             // Incremental: only pull rows newer than what we already have.
             // Watermark is trans_no (the universal PRIMARY key on every row),
             // because batch_no is NULL on OSCA/senior rows.
-            maxTransNo = await _mySqlRepo.GetMaxTransNoAsync();
+            maxTransNo = await _mySqlRepo.GetMaxTransNoAsync(_clientKind);
             isFullSync = false;
         }
 
         string mode = isFullSync ? "FULL" : $"INCREMENTAL (trans_no > {maxTransNo})";
-        _logger.LogInformation("Starting id-print sync [{Mode}]: OpenEdge → MySQL...", mode);
+        _logger.LogInformation(
+            "Starting id-print sync [{Mode}] for client {Client}: OpenEdge → MySQL...",
+            mode, _clientKind.Describe());
 
         int synced = 0;
         int failed = 0;
+        int skipped = 0;
 
         try
         {
             List<IdPrint> records = await RetryAsync(
-                () => _openEdgeRepo.GetIdPrintsNewerThanAsync(!isFullSync ? maxTransNo : null),
-                $"Read id-print from OpenEdge ({mode})");
+                () => _openEdgeRepo.GetIdPrintsNewerThanAsync(!isFullSync ? maxTransNo : null, _clientKind),
+                $"Read id-print from OpenEdge ({mode}, client {_clientKind.Describe()})");
 
             if (records.Count == 0)
             {
-                _logger.LogInformation("id-print sync complete [{Mode}]. No new records found.", mode);
+                _logger.LogInformation(
+                    "id-print sync complete [{Mode}] for client {Client}. No new records found.",
+                    mode, _clientKind.Describe());
                 if (isFullSync)
                     await PersistLastFullSyncAsync();
                 return;
             }
 
+            int? expectedTranType = _clientKind.TranTypeFilter();
+
             foreach (var record in records)
             {
+                // Defensive guard: never create a row for the other client, even
+                // if one slipped past the OpenEdge WHERE filter (e.g. a legacy
+                // row whose tran-type is missing). Only the configured client is
+                // ever written to MySQL.
+                if (expectedTranType.HasValue && record.TranType != expectedTranType.Value)
+                {
+                    _logger.LogWarning(
+                        "Skipping trans_no={TransNo} (tran_type={TranType}) — client filter is {Client}.",
+                        record.TransNo, record.TranType, _clientKind.Describe());
+                    skipped++;
+                    continue;
+                }
+
                 try
                 {
                     await RetryAsync(
-                        () => _mySqlRepo.UpsertIdPrintAsync(record),
+                        () => _mySqlRepo.UpsertIdPrintAsync(record, _clientKind),
                         $"Upsert id-print trans={record.TransNo} batch={record.BatchNo} app={record.AppNo}");
                     synced++;
                 }
@@ -106,8 +147,8 @@ public class SyncService
             }
 
             _logger.LogInformation(
-                "id-print sync complete [{Mode}]. {Synced} synced, {Failed} failed (out of {Total}).",
-                mode, synced, failed, records.Count);
+                "id-print sync complete [{Mode}] for client {Client}. {Synced} synced, {Skipped} skipped, {Failed} failed (out of {Total}).",
+                mode, _clientKind.Describe(), synced, skipped, failed, records.Count);
 
             if (isFullSync)
                 await PersistLastFullSyncAsync();
@@ -115,6 +156,41 @@ public class SyncService
         catch (Exception ex)
         {
             _logger.LogError(ex, "id-print sync failed [{Mode}].", mode);
+        }
+    }
+
+    /// <summary>
+    /// Confirms (once per process) that the MySQL `id_print` table contains every
+    /// column the bridge writes for the configured client. Returns false — and
+    /// logs an actionable error — when the table and Sync:Client disagree, so the
+    /// cycle is skipped instead of failing row-by-row with "unknown column".
+    /// </summary>
+    private async Task<bool> VerifySchemaOnceAsync()
+    {
+        if (_schemaVerified)
+            return true;
+
+        try
+        {
+            List<string> missing = await _mySqlRepo.GetMissingIdPrintColumnsAsync(_clientKind);
+            if (missing.Count > 0)
+            {
+                _logger.LogError(
+                    "MySQL table `id_print` is missing column(s) required for client {Client}: {Missing}. " +
+                    "Recreate `id_print` to match Sync:Client (see the setup guide). Skipping this cycle.",
+                    _clientKind.Describe(), string.Join(", ", missing));
+                return false;
+            }
+
+            _schemaVerified = true;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // MySQL may be temporarily unavailable — let the normal sync attempt
+            // surface the real error rather than blocking here.
+            _logger.LogWarning(ex, "Could not verify the id_print schema; continuing.");
+            return true;
         }
     }
 
@@ -129,7 +205,7 @@ public class SyncService
         try
         {
             await RetryAsync(
-                () => _mySqlRepo.SetLastFullSyncUtcAsync(DateTime.UtcNow),
+                () => _mySqlRepo.SetLastFullSyncUtcAsync(DateTime.UtcNow, _clientKind),
                 "Persist last full-sync timestamp");
         }
         catch (Exception ex)
@@ -140,40 +216,46 @@ public class SyncService
 
     public async Task SyncPrintedBackToOpenEdgeAsync()
     {
-        _logger.LogInformation("Starting print_count back-sync: MySQL → OpenEdge...");
+        _logger.LogInformation("Starting print_count back-sync for client {Client}: MySQL → OpenEdge...",
+            _clientKind.Describe());
 
         int updated = 0;
         int failed = 0;
 
         try
         {
-            List<long> transNos = await RetryAsync(
-                () => _mySqlRepo.GetPrintedTransNosAsync(),
-                "Read printed trans_nos from MySQL");
+            List<PrintedIdPrint> pending = await RetryAsync(
+                () => _mySqlRepo.GetPrintedBackSyncItemsAsync(_clientKind),
+                "Read printed rows from MySQL");
 
-            foreach (long transNo in transNos)
+            foreach (PrintedIdPrint item in pending)
             {
                 try
                 {
-                    // Mark both sides as printed
+                    // Once print_count reaches 1 (the back-sync trigger), stamp the
+                    // printed date/time with THIS machine's local time in both stores.
+                    // Instant ID's own printed_dt/printed_tm are ignored. photo/
+                    // image-data are carried back when present; pvc_no never.
+                    DateTime printedAt = DateTime.Now;
                     await RetryAsync(
-                        () => _openEdgeRepo.MarkPrintedAsync(transNo),
-                        $"Mark trans-no={transNo} as printed in OpenEdge");
+                        () => _openEdgeRepo.MarkPrintedAsync(
+                            item.TransNo, printedAt, item.Photo, item.ImageData),
+                        $"Mark trans-no={item.TransNo} as printed in OpenEdge");
                     await RetryAsync(
-                        () => _mySqlRepo.MarkPrintedAsync(transNo),
-                        $"Mark trans-no={transNo} as printed in MySQL");
+                        () => _mySqlRepo.MarkPrintedAsync(item.TransNo, printedAt),
+                        $"Mark trans-no={item.TransNo} as printed in MySQL");
                     updated++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to mark trans-no={TransNo} as printed", transNo);
+                    _logger.LogError(ex, "Failed to mark trans-no={TransNo} as printed", item.TransNo);
                     failed++;
                 }
             }
 
             _logger.LogInformation(
                 "Print count back-sync complete. {Updated} marked printed, {Failed} failed (out of {Total}).",
-                updated, failed, transNos.Count);
+                updated, failed, pending.Count);
         }
         catch (Exception ex)
         {

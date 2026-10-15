@@ -24,7 +24,91 @@ public class MySqlRepository : IDisposable
         _logger = logger;
     }
 
-    public async Task UpsertIdPrintAsync(IdPrint record)
+    // --- Columns the bridge writes, grouped per client -------------------------
+    // These mirror OpenEdgeRepository's projection, so a single-client deployment
+    // only needs that client's columns in its `id_print` table. The Entrust-only
+    // image columns (signature_data, qr_data, fingerprint_data) are NOT written
+    // here, so the sync never overwrites them.
+    private static readonly string[] CommonDataColumns =
+    {
+        "trans_no", "trans_date", "trans_time",
+        "address", "cp_no", "dob",
+        "lname", "fname", "mname", "sfx", "fullname",
+        "gender", "id_type", "image_data", "photo",
+        "printed", "printed_dt", "printed_tm", "tran_type", "pvc_no"
+    };
+
+    private static readonly string[] RtcOnlyDataColumns =
+    {
+        "batch_no", "batch_date", "app_no", "book_no", "page_no",
+        "series_no", "spa_docno", "spa_atty", "spa_dt_issue",
+        "id_code", "hcp_cpno", "hcp_fullname"
+    };
+
+    private static readonly string[] OscaOnlyDataColumns =
+    {
+        "age", "control_no", "date_issued", "id_no", "year_applied"
+    };
+
+    /// <summary>
+    /// The MySQL columns the bridge writes for a given client (excludes the
+    /// Entrust-only image columns). Used to build the upsert and to validate a
+    /// per-client table up front.
+    /// </summary>
+    public static IReadOnlyList<string> WrittenColumnsFor(IdPrintKind kind)
+    {
+        var columns = new List<string>(CommonDataColumns);
+        if (kind != IdPrintKind.Osca)
+            columns.AddRange(RtcOnlyDataColumns);
+        if (kind != IdPrintKind.Rtc)
+            columns.AddRange(OscaOnlyDataColumns);
+        columns.Add("print_count");
+        return columns;
+    }
+
+    private static List<(string Column, object? Value)> BuildValues(IdPrint r, IdPrintKind kind)
+    {
+        var values = new List<(string, object?)>
+        {
+            ("trans_no", r.TransNo), ("trans_date", r.TransDate), ("trans_time", r.TransTime),
+            ("address", r.Address), ("cp_no", r.CpNo), ("dob", r.Dob),
+            ("lname", r.Lname), ("fname", r.Fname), ("mname", r.Mname),
+            ("sfx", r.Sfx), ("fullname", r.Fullname),
+            ("gender", r.Gender), ("id_type", r.IdType),
+            ("image_data", r.ImageData), ("photo", r.Photo),
+            ("printed", r.Printed), ("printed_dt", r.PrintedDt), ("printed_tm", r.PrintedTm),
+            ("tran_type", r.TranType), ("pvc_no", r.PvcNo)
+        };
+
+        if (kind != IdPrintKind.Osca)
+        {
+            values.Add(("batch_no", r.BatchNo));
+            values.Add(("batch_date", r.BatchDate));
+            values.Add(("app_no", r.AppNo));
+            values.Add(("book_no", r.BookNo));
+            values.Add(("page_no", r.PageNo));
+            values.Add(("series_no", r.SeriesNo));
+            values.Add(("spa_docno", r.SpaDocno));
+            values.Add(("spa_atty", r.SpaAtty));
+            values.Add(("spa_dt_issue", r.SpaDtIssue));
+            values.Add(("id_code", r.IdCode));
+            values.Add(("hcp_cpno", r.HcpCpno));
+            values.Add(("hcp_fullname", r.HcpFullname));
+        }
+
+        if (kind != IdPrintKind.Rtc)
+        {
+            values.Add(("age", r.Age));
+            values.Add(("control_no", r.ControlNo));
+            values.Add(("date_issued", r.DateIssued));
+            values.Add(("id_no", r.IdNo));
+            values.Add(("year_applied", r.YearApplied));
+        }
+
+        return values;
+    }
+
+    public async Task UpsertIdPrintAsync(IdPrint record, IdPrintKind kind = IdPrintKind.Both)
     {
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
@@ -67,200 +151,108 @@ public class MySqlRepository : IDisposable
         // auto-increment IDs on every INSERT ... ON DUPLICATE KEY UPDATE cycle.
         // (InnoDB allocates the next auto-increment value even when the INSERT
         //  becomes an UPDATE, causing large gaps over repeated sync runs.)
+        List<(string Column, object? Value)> values = BuildValues(record, kind);
+
         string checkSql = $"SELECT COUNT(1) FROM id_print WHERE {whereClause}";
         await using var checkCmd = new MySqlCommand(checkSql, connection);
-        AddUpsertParameters(checkCmd, record);
+        AddKeyParameters(checkCmd, record, useTransNo, isOsca);
         bool exists = Convert.ToInt64(await checkCmd.ExecuteScalarAsync()) > 0;
 
         if (exists)
         {
-            string updateSql = $$"""
-                UPDATE id_print
-                SET
-                    trans_no      = @trans_no,
-                    trans_date    = @trans_date,
-                    trans_time    = @trans_time,
-                    batch_no      = @batch_no,
-                    batch_date    = @batch_date,
-                    app_no        = @app_no,
-                    dob           = @dob,
-                    cp_no         = @cp_no,
-                    fullname      = @fullname,
-                    hcp_fullname  = @hcp_fullname,
-                    address       = @address,
-                    hcp_cpno      = @hcp_cpno,
-                    lname         = @lname,
-                    fname         = @fname,
-                    mname         = @mname,
-                    spa_docno     = @spa_docno,
-                    page_no       = @page_no,
-                    book_no       = @book_no,
-                    series_no     = @series_no,
-                    spa_atty      = @spa_atty,
-                    spa_dt_issue  = @spa_dt_issue,
-                    printed       = @printed,
-                    printed_dt    = @printed_dt,
-                    printed_tm    = @printed_tm,
-                    tran_type     = @tran_type,
-                    image_data    = @image_data,
-                    id_code       = @id_code,
-                    sfx           = @sfx,
-                    photo         = @photo,
-                    gender        = @gender,
-                    date_issued   = @date_issued,
-                    id_no         = @id_no,
-                    year_applied  = @year_applied,
-                    control_no    = @control_no,
-                    id_type       = @id_type,
-                    pvc_no        = @pvc_no,
-                    age           = @age
-                WHERE {{whereClause}}
-                """;
+            string setList = string.Join(",\n        ", values.Select(v => $"{v.Column} = @{v.Column}"));
+            string updateSql = $"UPDATE id_print\n        SET\n        {setList}\n        WHERE {whereClause}";
 
             await using var cmd = new MySqlCommand(updateSql, connection);
-            AddUpsertParameters(cmd, record);
+            AddValueParameters(cmd, values);
             await cmd.ExecuteNonQueryAsync();
             _logger.LogDebug("Updated id-print record trans_no={TransNo} type={TranType} batch_no={BatchNo} app_no={AppNo}",
                 record.TransNo, record.TranType, record.BatchNo, record.AppNo);
         }
         else
         {
-            const string insertSql = """
-                INSERT INTO id_print
-                (
-                    trans_no,
-                    trans_date,
-                    trans_time,
-                    batch_no,
-                    batch_date,
-                    app_no,
-                    dob,
-                    cp_no,
-                    fullname,
-                    hcp_fullname,
-                    address,
-                    hcp_cpno,
-                    lname,
-                    fname,
-                    mname,
-                    spa_docno,
-                    page_no,
-                    book_no,
-                    series_no,
-                    spa_atty,
-                    spa_dt_issue,
-                    printed,
-                    printed_dt,
-                    printed_tm,
-                    tran_type,
-                    image_data,
-                    id_code,
-                    sfx,
-                    photo,
-                    gender,
-                    date_issued,
-                    id_no,
-                    year_applied,
-                    control_no,
-                    id_type,
-                    pvc_no,
-                    age,
-                    print_count
-                )
-                VALUES
-                (
-                    @trans_no,
-                    @trans_date,
-                    @trans_time,
-                    @batch_no,
-                    @batch_date,
-                    @app_no,
-                    @dob,
-                    @cp_no,
-                    @fullname,
-                    @hcp_fullname,
-                    @address,
-                    @hcp_cpno,
-                    @lname,
-                    @fname,
-                    @mname,
-                    @spa_docno,
-                    @page_no,
-                    @book_no,
-                    @series_no,
-                    @spa_atty,
-                    @spa_dt_issue,
-                    @printed,
-                    @printed_dt,
-                    @printed_tm,
-                    @tran_type,
-                    @image_data,
-                    @id_code,
-                    @sfx,
-                    @photo,
-                    @gender,
-                    @date_issued,
-                    @id_no,
-                    @year_applied,
-                    @control_no,
-                    @id_type,
-                    @pvc_no,
-                    @age,
-                    @print_count
-                )
-                """;
+            string columnList = string.Join(",\n        ", values.Select(v => v.Column).Append("print_count"));
+            string valueList  = string.Join(",\n        ", values.Select(v => "@" + v.Column).Append("@print_count"));
+            string insertSql = $"INSERT INTO id_print\n        (\n        {columnList}\n        )\n        VALUES\n        (\n        {valueList}\n        )";
 
             await using var cmd = new MySqlCommand(insertSql, connection);
-            AddUpsertParameters(cmd, record);
+            AddValueParameters(cmd, values);
+            cmd.Parameters.AddWithValue("@print_count", (object?)record.PrintCount ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync();
             _logger.LogDebug("Inserted id-print record trans_no={TransNo} type={TranType} batch_no={BatchNo} app_no={AppNo}",
                 record.TransNo, record.TranType, record.BatchNo, record.AppNo);
         }
     }
 
-    private static void AddUpsertParameters(MySqlCommand cmd, IdPrint record)
+    private static void AddValueParameters(MySqlCommand cmd, List<(string Column, object? Value)> values)
     {
-        cmd.Parameters.AddWithValue("@trans_no",     (object?)record.TransNo     ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@trans_date",   (object?)record.TransDate   ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@trans_time",   (object?)record.TransTime   ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@batch_no",     (object?)record.BatchNo     ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@batch_date",   (object?)record.BatchDate   ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@app_no",       (object?)record.AppNo       ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@dob",          (object?)record.Dob         ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@cp_no",        (object?)record.CpNo        ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@fullname",     (object?)record.Fullname    ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@hcp_fullname", (object?)record.HcpFullname ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@address",      (object?)record.Address     ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@hcp_cpno",     (object?)record.HcpCpno     ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@lname",        (object?)record.Lname       ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@fname",        (object?)record.Fname       ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@mname",        (object?)record.Mname       ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@spa_docno",    (object?)record.SpaDocno    ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@page_no",      (object?)record.PageNo      ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@book_no",      (object?)record.BookNo      ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@series_no",    (object?)record.SeriesNo    ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@spa_atty",     (object?)record.SpaAtty     ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@spa_dt_issue", (object?)record.SpaDtIssue  ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@printed",      (object?)record.Printed     ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@printed_dt",   (object?)record.PrintedDt   ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@printed_tm",   (object?)record.PrintedTm   ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@tran_type",    (object?)record.TranType    ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@image_data",   (object?)record.ImageData   ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@id_code",      (object?)record.IdCode      ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@sfx",          (object?)record.Sfx         ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@photo",        (object?)record.Photo       ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@gender",       (object?)record.Gender      ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@date_issued",  (object?)record.DateIssued  ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@id_no",        (object?)record.IdNo        ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@year_applied", (object?)record.YearApplied ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@control_no",   (object?)record.ControlNo   ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@id_type",      (object?)record.IdType      ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@pvc_no",       (object?)record.PvcNo       ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@age",          (object?)record.Age         ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@print_count",  (object?)record.PrintCount  ?? DBNull.Value);
+        foreach (var (column, value) in values)
+            cmd.Parameters.AddWithValue("@" + column, value ?? DBNull.Value);
+    }
+
+    private static void AddKeyParameters(MySqlCommand cmd, IdPrint record, bool useTransNo, bool isOsca)
+    {
+        if (useTransNo)
+        {
+            cmd.Parameters.AddWithValue("@trans_no", (object?)record.TransNo ?? DBNull.Value);
+        }
+        else if (isOsca)
+        {
+            cmd.Parameters.AddWithValue("@control_no", (object?)record.ControlNo ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@id_no", (object?)record.IdNo ?? DBNull.Value);
+        }
+        else
+        {
+            cmd.Parameters.AddWithValue("@batch_no", (object?)record.BatchNo ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@app_no", (object?)record.AppNo ?? DBNull.Value);
+        }
+    }
+
+    /// <summary>
+    /// Returns the columns the bridge writes for <paramref name="kind"/> that do
+    /// not exist in the current `id_print` table (an empty list means the schema
+    /// is fine). Lets the service warn clearly when Sync:Client and the table
+    /// layout disagree.
+    /// </summary>
+    public async Task<List<string>> GetMissingIdPrintColumnsAsync(IdPrintKind kind)
+    {
+        IReadOnlyList<string> expected = WrittenColumnsFor(kind);
+
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string sql = """
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'id_print'
+            """;
+
+        var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using (var cmd = new MySqlCommand(sql, connection))
+        await using (var reader = await cmd.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+                existing.Add(reader.GetString(0));
+        }
+
+        return expected.Where(c => !existing.Contains(c)).ToList();
     }
 
     private const string LastFullSyncKey = "last_full_sync_utc";
+
+    /// <summary>
+    /// The sync_state key that records the last FULL sync timestamp. The key is
+    /// per-client, so switching Sync:Client on an existing deployment seeds a
+    /// fresh FULL sync for the newly selected client (the "Both" key is kept
+    /// unchanged for backwards compatibility).
+    /// </summary>
+    private static string FullSyncKeyFor(IdPrintKind kind) => kind switch
+    {
+        IdPrintKind.Rtc  => "last_full_sync_utc_rtc",
+        IdPrintKind.Osca => "last_full_sync_utc_osca",
+        _                => LastFullSyncKey
+    };
 
     /// <summary>
     /// Creates the sync_state table if it does not exist yet.
@@ -282,10 +274,10 @@ public class MySqlRepository : IDisposable
     }
 
     /// <summary>
-    /// Reads the UTC timestamp of the last successful FULL sync,
-    /// or null if a full sync has never been recorded.
+    /// Reads the UTC timestamp of the last successful FULL sync for the given
+    /// client, or null if a full sync has never been recorded for it.
     /// </summary>
-    public async Task<DateTime?> GetLastFullSyncUtcAsync()
+    public async Task<DateTime?> GetLastFullSyncUtcAsync(IdPrintKind kind = IdPrintKind.Both)
     {
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
@@ -294,7 +286,7 @@ public class MySqlRepository : IDisposable
 
         const string sql = "SELECT state_value FROM sync_state WHERE state_key = @key";
         await using var cmd = new MySqlCommand(sql, connection);
-        cmd.Parameters.AddWithValue("@key", LastFullSyncKey);
+        cmd.Parameters.AddWithValue("@key", FullSyncKeyFor(kind));
 
         object? result = await cmd.ExecuteScalarAsync();
         if (result == null || result is DBNull)
@@ -311,9 +303,9 @@ public class MySqlRepository : IDisposable
     }
 
     /// <summary>
-    /// Persists the UTC timestamp of a successful FULL sync.
+    /// Persists the UTC timestamp of a successful FULL sync for the given client.
     /// </summary>
-    public async Task SetLastFullSyncUtcAsync(DateTime utc)
+    public async Task SetLastFullSyncUtcAsync(DateTime utc, IdPrintKind kind = IdPrintKind.Both)
     {
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
@@ -329,7 +321,7 @@ public class MySqlRepository : IDisposable
             """;
 
         await using var cmd = new MySqlCommand(sql, connection);
-        cmd.Parameters.AddWithValue("@key", LastFullSyncKey);
+        cmd.Parameters.AddWithValue("@key", FullSyncKeyFor(kind));
         cmd.Parameters.AddWithValue("@value",
             utc.ToString("o", System.Globalization.CultureInfo.InvariantCulture));
         await cmd.ExecuteNonQueryAsync();
@@ -341,14 +333,23 @@ public class MySqlRepository : IDisposable
     /// greater than this. trans-no is the table-wide PRIMARY key (id-idx) and
     /// exists on every row (RTC and OSCA/senior alike), so it is a safe
     /// universal watermark unlike batch_no (which is NULL for OSCA rows).
+    /// When a single client is configured, the watermark is scoped to that
+    /// client (tran_type) so a higher trans_no of the *other* kind can never
+    /// hide un-synced rows of the configured kind.
     /// </summary>
-    public async Task<long?> GetMaxTransNoAsync()
+    public async Task<long?> GetMaxTransNoAsync(IdPrintKind kind = IdPrintKind.Both)
     {
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        const string sql = "SELECT MAX(trans_no) FROM id_print";
+        int? tranTypeFilter = kind.TranTypeFilter();
+
+        string sql = tranTypeFilter.HasValue
+            ? "SELECT MAX(trans_no) FROM id_print WHERE tran_type = @tran_type"
+            : "SELECT MAX(trans_no) FROM id_print";
         await using var cmd = new MySqlCommand(sql, connection);
+        if (tranTypeFilter.HasValue)
+            cmd.Parameters.AddWithValue("@tran_type", tranTypeFilter.Value);
         object? result = await cmd.ExecuteScalarAsync();
 
         if (result == null || result is DBNull)
@@ -358,50 +359,87 @@ public class MySqlRepository : IDisposable
     }
 
     /// <summary>
-    /// Returns the trans_no values of records that have been printed by
-    /// Instant ID (print_count > 0) but are not yet marked as printed.
-    /// trans_no is used (not app_no) because OSCA/senior rows have no app_no.
+    /// Returns the rows that Instant ID has printed (print_count > 0) but that
+    /// are not yet marked as printed. Alongside trans_no it reads the image fields
+    /// Entrust may have filled while printing (photo, image_data) so the back-sync
+    /// can carry them to OpenEdge. The printed date/time are NOT read — the
+    /// back-sync stamps them with the bridge machine's local time instead.
+    /// NOTE: pvc_no is deliberately NOT read back — it always holds a value in
+    /// MySQL, so pushing it would overwrite OpenEdge's PVC-No on every sync.
+    /// Scoped to the configured client (tran_type) so an OSCA-only deployment
+    /// never pushes prints back onto RTC rows (and vice versa).
     /// </summary>
-    public async Task<List<long>> GetPrintedTransNosAsync()
+    public async Task<List<PrintedIdPrint>> GetPrintedBackSyncItemsAsync(IdPrintKind kind = IdPrintKind.Both)
     {
-        var transNos = new List<long>();
+        var items = new List<PrintedIdPrint>();
 
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        const string sql = """
-            SELECT trans_no
-            FROM id_print
-            WHERE trans_no > 0
-              AND print_count > 0
-              AND (printed IS NULL OR printed = 'no')
-            """;
+        int? tranTypeFilter = kind.TranTypeFilter();
+
+        string sql = tranTypeFilter.HasValue
+            ? """
+                SELECT trans_no, photo, image_data
+                FROM id_print
+                WHERE trans_no > 0
+                  AND print_count > 0
+                  AND (printed IS NULL OR printed = 'no')
+                  AND tran_type = @tran_type
+                """
+            : """
+                SELECT trans_no, photo, image_data
+                FROM id_print
+                WHERE trans_no > 0
+                  AND print_count > 0
+                  AND (printed IS NULL OR printed = 'no')
+                """;
 
         await using var cmd = new MySqlCommand(sql, connection);
+        if (tranTypeFilter.HasValue)
+            cmd.Parameters.AddWithValue("@tran_type", tranTypeFilter.Value);
         await using var reader = await cmd.ExecuteReaderAsync();
 
         while (await reader.ReadAsync())
         {
-            if (!reader.IsDBNull(0))
-                transNos.Add(reader.GetInt64(0));
+            if (reader.IsDBNull(0))
+                continue;
+
+            items.Add(new PrintedIdPrint
+            {
+                TransNo   = reader.GetInt64(0),
+                Photo     = reader.IsDBNull(1) ? null : (byte[])reader[1],
+                ImageData = reader.IsDBNull(2) ? null : (byte[])reader[2]
+            });
         }
 
-        return transNos;
+        return items;
     }
 
-    public async Task MarkPrintedAsync(long transNo)
+    /// <summary>
+    /// Marks a row as printed and stamps <c>printed_dt</c>/<c>printed_tm</c> with
+    /// the bridge machine's local time (<paramref name="printedAt"/>) rather than
+    /// whatever Instant ID wrote, so MySQL and OpenEdge agree. Called once
+    /// <c>print_count</c> reaches 1 — the back-sync trigger.
+    /// </summary>
+    public async Task MarkPrintedAsync(long transNo, DateTime printedAt)
     {
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
         const string sql = """
             UPDATE id_print
-            SET printed = 'yes'
+            SET printed = 'yes',
+                printed_dt = @printed_dt,
+                printed_tm = @printed_tm
             WHERE trans_no = @trans_no
             """;
 
         await using var cmd = new MySqlCommand(sql, connection);
         cmd.Parameters.AddWithValue("@trans_no", transNo);
+        cmd.Parameters.AddWithValue("@printed_dt", printedAt.Date);
+        cmd.Parameters.AddWithValue("@printed_tm",
+            printedAt.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture));
         await cmd.ExecuteNonQueryAsync();
     }
 

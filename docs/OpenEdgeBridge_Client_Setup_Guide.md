@@ -150,7 +150,101 @@ USE instantid_bridge;
 ```
 
 3. Click **Go**.
-4. Still in the **SQL** tab (make sure `instantid_bridge` is selected in the left panel), paste and run:
+4. Still in the **SQL** tab (make sure `instantid_bridge` is selected in the left panel), create the `id_print` table **for your client**. The table's columns must match `Sync:Client`.
+
+   **OSCA / senior — if `Sync:Client` is `"OSCA"`:**
+
+```sql
+CREATE TABLE IF NOT EXISTS id_print (
+    id               INT           NOT NULL AUTO_INCREMENT,
+    trans_no         BIGINT        NULL        COMMENT 'Universal transaction no (OpenEdge PRIMARY key id-idx)',
+    trans_date       DATE          NULL        COMMENT 'Transaction date',
+    trans_time       VARCHAR(30)   NULL        COMMENT 'Transaction time',
+    dob              DATE          NULL,
+    cp_no            VARCHAR(15)   NULL,
+    fullname         VARCHAR(65)   NULL,
+    address          VARCHAR(100)  NULL,
+    lname            VARCHAR(55)   NULL,
+    fname            VARCHAR(55)   NULL,
+    mname            VARCHAR(55)   NULL,
+    sfx              VARCHAR(15)   NULL,
+    printed          VARCHAR(3)    NULL        COMMENT 'yes / no (matches OpenEdge LOGICAL FORMAT)',
+    printed_dt       DATE          NULL,
+    printed_tm       VARCHAR(35)   NULL,
+    tran_type        INT           NULL        COMMENT '2 = OSCA/senior',
+    image_data       LONGBLOB      NULL,
+    photo            LONGBLOB      NULL,
+    gender           INT           NULL        COMMENT '1 = Female, 2 = Male',
+    id_type          INT           NULL        COMMENT '1 = New, 2 = ReIssue/Reprint',
+    pvc_no           VARCHAR(35)   NULL,
+    age              INT           NULL,
+    control_no       INT           NULL,
+    date_issued      DATE          NULL,
+    id_no            VARCHAR(25)   NULL,
+    year_applied     INT           NULL,
+    signature_data   LONGBLOB      NULL        COMMENT 'Signature image; written by Entrust Instant ID (MySQL only)',
+    qr_data          LONGBLOB      NULL        COMMENT 'QR code image; written by Entrust Instant ID (MySQL only)',
+    fingerprint_data LONGBLOB      NULL        COMMENT 'Fingerprint image (OSCA/senior only); written by Entrust Instant ID (MySQL only)',
+    print_count      INT           NULL        COMMENT 'Incremented by Instant ID; triggers printed=yes back-sync',
+    PRIMARY KEY (id),
+    UNIQUE INDEX idx_trans_no (trans_no),
+    INDEX idx_osca_key (tran_type, control_no, id_no),
+    INDEX idx_print_sync (printed, print_count, trans_no)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+```
+
+   **RTC — if `Sync:Client` is `"RTC"`:**
+
+```sql
+CREATE TABLE IF NOT EXISTS id_print (
+    id             INT           NOT NULL AUTO_INCREMENT,
+    trans_no       BIGINT        NULL        COMMENT 'Universal transaction no (OpenEdge PRIMARY key id-idx)',
+    trans_date     DATE          NULL        COMMENT 'Transaction date',
+    trans_time     VARCHAR(30)   NULL        COMMENT 'Transaction time',
+    batch_no       INT           NULL,
+    batch_date     DATE          NULL,
+    app_no         INT           NULL,
+    dob            DATE          NULL,
+    cp_no          VARCHAR(15)   NULL,
+    fullname       VARCHAR(65)   NULL,
+    hcp_fullname   VARCHAR(65)   NULL,
+    address        VARCHAR(100)  NULL,
+    hcp_cpno       VARCHAR(15)   NULL,
+    lname          VARCHAR(55)   NULL,
+    fname          VARCHAR(55)   NULL,
+    mname          VARCHAR(55)   NULL,
+    spa_docno      VARCHAR(25)   NULL,
+    page_no        VARCHAR(20)   NULL,
+    book_no        VARCHAR(20)   NULL,
+    series_no      VARCHAR(20)   NULL,
+    spa_atty       VARCHAR(65)   NULL,
+    spa_dt_issue   DATE          NULL,
+    printed        VARCHAR(3)    NULL        COMMENT 'yes / no (matches OpenEdge LOGICAL FORMAT)',
+    printed_dt     DATE          NULL,
+    printed_tm     VARCHAR(35)   NULL,
+    tran_type      INT           NULL        COMMENT '1 = RTC',
+    image_data     LONGBLOB      NULL,
+    id_code        INT           NULL,
+    sfx            VARCHAR(15)   NULL,
+    photo          LONGBLOB      NULL,
+    gender         INT           NULL        COMMENT '1 = Female, 2 = Male',
+    id_type        INT           NULL        COMMENT '1 = New, 2 = ReIssue/Reprint',
+    pvc_no         VARCHAR(35)   NULL,
+    signature_data LONGBLOB      NULL        COMMENT 'Signature image; written by Entrust Instant ID (MySQL only)',
+    qr_data        LONGBLOB      NULL        COMMENT 'QR code image; written by Entrust Instant ID (MySQL only)',
+    print_count    INT           NULL        COMMENT 'Incremented by Instant ID; triggers printed=yes back-sync',
+    PRIMARY KEY (id),
+    UNIQUE INDEX idx_trans_no (trans_no),
+    INDEX idx_rtc_key (tran_type, batch_no, app_no),
+    INDEX idx_print_sync (printed, print_count, trans_no)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+```
+
+   **Both clients — if `Sync:Client` is `"Both"` (or as the base for an existing install):**
 
 ```sql
 CREATE TABLE IF NOT EXISTS id_print (
@@ -194,6 +288,7 @@ CREATE TABLE IF NOT EXISTS id_print (
     age            INT           NULL,
     signature_data LONGBLOB      NULL        COMMENT 'Signature image; written by Entrust Instant ID (MySQL only)',
     qr_data        LONGBLOB      NULL        COMMENT 'QR code image; written by Entrust Instant ID (MySQL only)',
+    fingerprint_data LONGBLOB    NULL        COMMENT 'Fingerprint image (OSCA/senior only); written by Entrust Instant ID (MySQL only)',
     print_count    INT           NULL        COMMENT 'Incremented by Instant ID; triggers printed=yes back-sync',
     PRIMARY KEY (id),
     UNIQUE INDEX idx_trans_no (trans_no),
@@ -229,6 +324,7 @@ CREATE TABLE IF NOT EXISTS id_print (
 >   ADD COLUMN trans_time   VARCHAR(30) NULL AFTER trans_date,
 >   ADD COLUMN signature_data LONGBLOB  NULL AFTER trans_time,
 >   ADD COLUMN qr_data        LONGBLOB  NULL AFTER signature_data,
+>   ADD COLUMN fingerprint_data LONGBLOB NULL AFTER qr_data,
 >   DROP INDEX idx_app_no,
 >   DROP INDEX idx_batch_no,
 >   ADD UNIQUE INDEX idx_trans_no (trans_no),
@@ -236,8 +332,9 @@ CREATE TABLE IF NOT EXISTS id_print (
 >   ADD INDEX idx_osca_key (tran_type, control_no, id_no),
 >   ADD INDEX idx_print_sync (printed, print_count, trans_no);
 > ```
+> (If you already had `signature_data` and `qr_data`, just run the `CHANGE COLUMN id_type` line, the seven `ADD COLUMN` lines before them, the three `id_type`/`pvc_no`/`age`/`trans_no`/`trans_date`/`trans_time` lines, the `fingerprint_data` line, and the `DROP INDEX`/`ADD INDEX` lines.)
 >
-> (If you already had `signature_data` and `qr_data`, just run the `CHANGE COLUMN id_type` line, the seven `ADD COLUMN` lines before them, the three `id_type`/`pvc_no`/`age`/`trans_no`/`trans_date`/`trans_time` lines, and the `DROP INDEX`/`ADD INDEX` lines.)
+> **Deploying for a single client?** A combined `id_print` still works with `Sync:Client = "RTC"` or `"OSCA"` — the bridge never writes the other client's columns, so those columns simply stay `NULL`. Keep it, or recreate the table from the matching script in step 4 for a slimmer schema.
 
 > ✅ **Done when:** `instantid_bridge` database and `id_print` table appear in phpMyAdmin.
 
@@ -280,7 +377,8 @@ CREATE TABLE IF NOT EXISTS id_print (
   },
   "Sync": {
     "IntervalSeconds": 10,
-    "FullSyncIntervalMinutes": 0
+    "FullSyncIntervalMinutes": 0,
+    "Client": "Both"
   }
 }
 ```
@@ -291,6 +389,7 @@ CREATE TABLE IF NOT EXISTS id_print (
 | `MySql` | `Server=127.0.0.1` (your local XAMPP); `Uid=root`; `Pwd` = the MySQL password you set in Step 3 |
 | `Sync:IntervalSeconds` | How often the bridge checks for new data (10 = every 10 seconds; 10–30 is recommended) |
 | `Sync:FullSyncIntervalMinutes` | Keep at **`0`**. The bridge then copies everything once when it first runs, and afterwards only picks up **new batches** — every 10 seconds, forever, even after reboots. Do not change this unless the provider tells you to |
+| `Sync:Client` | Which client this PC is for: `Both` (default), `RTC`, or `OSCA`. Set it to the client you are deploying (for example `OSCA`) and the bridge syncs **only** that client's records. It must match the `id_print` table you created in Step 4. Ask the provider if you are unsure |
 
 3. Save the file.
 
@@ -348,7 +447,7 @@ This is what the bridge does behind the scenes — you normally never have to th
 1. **First time it runs**, it copies **everything** from the OpenEdge `id-print` table into your local MySQL (`id_print`). This can take a few minutes if there are many records — that is normal.
 2. **After that**, every 10 seconds it only asks OpenEdge for **new transactions** (rows whose `trans-no` is newer than the highest it already has) and copies just those. `trans-no` is on every row — RTC batches and OSCA/senior single records alike — so both kinds are picked up. Existing rows are not re-copied.
 3. The bridge remembers this in a small bookkeeping table (`sync_state`) inside MySQL — so **restarting the PC or the service never causes another full copy**. It picks up right where it left off.
-4. Separately, it checks every 10 seconds whether Entrust Instant ID has printed anything (`print_count`), and marks those records as `printed = yes` back in OpenEdge.
+4. Separately, it checks every 10 seconds whether Entrust Instant ID has printed anything (`print_count`), and marks those records as `printed = yes` back in OpenEdge, together with the print date and time. If Entrust recorded its own print date/time in MySQL that value is used; if it did not, the bridge writes its own current date/time. Photo/image data are carried back only when they have a value. The PVC number (`pvc_no`) is **not** written back to OpenEdge.
 
 > 💡 **Expect this once:** if you ever upgrade the bridge from an older version, the first start after the upgrade does one full copy again (to create the bookkeeping table), then returns to new-batches-only.
 
@@ -400,7 +499,7 @@ Get-Service OpenEdgeBridge          # check status
 - [ ] System DSN `OpenEdgeInstantID` created and **Test Connect** succeeds
 - [ ] XAMPP installed, MySQL **running**, `root` password set
 - [ ] `instantid_bridge` database created
-- [ ] `id_print` table created (with `trans_no`, `tran_type`, `sfx`, `photo`, `gender`, `date_issued`, `id_no`, `year_applied`, `control_no`, `id_type`, `pvc_no`, `age`, `trans_date`, `trans_time`, `signature_data`, `qr_data`, `print_count`, and UNIQUE `trans_no`)
+- [ ] `id_print` table created (with `trans_no`, `tran_type`, `sfx`, `photo`, `gender`, `date_issued`, `id_no`, `year_applied`, `control_no`, `id_type`, `pvc_no`, `age`, `trans_date`, `trans_time`, `signature_data`, `qr_data`, `fingerprint_data` *(OSCA/senior)*, `print_count`, and UNIQUE `trans_no`)
 - [ ] `sync_state` table exists in MySQL (auto-created by the bridge after the first run — verify in phpMyAdmin)
 - [ ] `mysql-connector-j-8.0.33.jar` placed in Entrust's `lib/` folder
 - [ ] Entrust configured → `localhost:3306` / `instantid_bridge` / `id_print`

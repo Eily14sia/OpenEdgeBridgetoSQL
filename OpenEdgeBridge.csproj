@@ -21,4 +21,11 @@
     </None>
   </ItemGroup>
 
+  <!-- Keep the deployable guides in sync with docs/ whenever we publish. -->
+  <Target Name="CopyDocsToPublish" AfterTargets="Publish">
+    <Copy SourceFiles="docs\OpenEdgeBridge_Client_Setup_Guide.md;docs\OpenEdgeBridge_Documentation.md"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>
